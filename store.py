@@ -4,7 +4,7 @@ from handler.DBHandler import DBHandler
 from handler.HttpHandler import HttpHandler
 from interfaces.Section import Section
 from pprint import pprint
-from switcher import get_machine, get_manager
+from manger.ClassManager import get_machine, get_manager
 
 
 class Store:

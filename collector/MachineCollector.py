@@ -3,7 +3,7 @@ from typing import List
 from collector.utils import grouping
 from handler.DBHandler import DBHandler
 from interfaces.Machine import Machines
-from switcher import get_machine
+from manger.ClassManager import get_machine
 
 
 class MachineCollector:

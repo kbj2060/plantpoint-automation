@@ -1,6 +1,6 @@
-from envrionments import *
-from machine_manager import *
-from machines import *
+from reference.envrionments import *
+from manger.MachineManager import *
+from reference.machines import *
 
 
 def get_machine(name):
