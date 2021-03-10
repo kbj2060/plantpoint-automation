@@ -18,18 +18,21 @@ class HttpHandler:
 
     def get_automations(self, ms: MachineSection):
         return requests.get(
-            f'{constants.AUTOMATION_READ_URL}/{ms.m_section}',
+            f'{constants.AUTOMATION_READ_URL}/{ms.section}',
             headers=self.access_header
         ).json()['lastAutomations']
 
     def get_environments(self, es: EnvironmentSection):
-        return requests.get(
-            f'{constants.ENVIRONMENT_READ_URL}/{es.e_section}',
+
+        environment = requests.get(
+            f'{constants.ENVIRONMENT_READ_URL}/{es.section}',
             headers=self.access_header
         ).json()
+        environment['section'] = es.section
+        return environment
 
     def get_switches(self, ms: MachineSection):
         return requests.get(
-            f'{constants.SWITCH_READ_URL}/{ms.m_section}',
+            f'{constants.SWITCH_READ_URL}/{ms.section}',
             headers=self.access_header
         ).json()

@@ -9,7 +9,7 @@ def handle_arr_length(arr):
         return arr[0]
 
 
-class BaseMachineSetter:
+class BaseMachineManager:
     def __init__(self, automations, switches):
         self.switches = switches
         self.automations = automations
@@ -34,7 +34,7 @@ class BaseMachineSetter:
         self.set_status(machine)
 
 
-class RangeSetter(BaseMachineSetter):
+class RangeManager(BaseMachineManager):
     def __init__(self, automations, switches):
         super().__init__(automations=automations, switches=switches)
 
@@ -51,7 +51,7 @@ class RangeSetter(BaseMachineSetter):
         )
 
 
-class CycleSetter(BaseMachineSetter):
+class CycleManager(BaseMachineManager):
     def __init__(self, automations, switches):
         super().__init__(automations=automations, switches=switches)
 

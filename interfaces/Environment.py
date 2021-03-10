@@ -5,17 +5,11 @@ class Environment(metaclass=ABCMeta):
     def __init__(self):
         self.value = 0
 
-
-class Co2(Environment):
-    def __init__(self):
-        super().__init__()
+    def set_value(self, value):
+        self.value = value
 
 
-class Temperature(Environment):
-    def __init__(self):
-        super().__init__()
-
-
-class Humidity(Environment):
-    def __init__(self):
-        super().__init__()
+class Environments:
+    def __init__(self, section: str, environments: list):
+        self.environments = environments
+        self.section = section

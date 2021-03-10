@@ -2,15 +2,15 @@ from typing import List
 
 
 class EnvironmentSection:
-    def __init__(self, e_section: str):
+    def __init__(self, section: str):
         super().__init__()
-        self.e_section = e_section
+        self.section = section
 
 
 class MachineSection:
-    def __init__(self, m_section: str):
+    def __init__(self, section: str):
         super().__init__()
-        self.m_section = m_section
+        self.section = section
 
 
 class Section:

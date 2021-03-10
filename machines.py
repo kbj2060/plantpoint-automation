@@ -2,14 +2,14 @@ from interfaces.Machine import TimeRangeMachine, TemperatureRangeMachine, CycleM
 
 
 class LedMachine(TimeRangeMachine):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, section):
+        super().__init__(section=section)
         self.name = 'led'
 
 
 class HeaterMachine(TemperatureRangeMachine):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, section):
+        super().__init__(section=section)
         self.name = 'heater'
 
     def check_temperature(self, temperature):
@@ -22,8 +22,8 @@ class HeaterMachine(TemperatureRangeMachine):
 
 
 class CoolerMachine(TemperatureRangeMachine):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, section):
+        super().__init__(section=section)
         self.name = 'cooler'
 
     def check_temperature(self, temperature):
@@ -36,18 +36,18 @@ class CoolerMachine(TemperatureRangeMachine):
 
 
 class FanMachine(CycleMachine):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, section):
+        super().__init__(section=section)
         self.name = 'fan'
 
 
 class RoofFanMachine(CycleMachine):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, section):
+        super().__init__(section=section)
         self.name = 'roofFan'
 
 
 class WaterPumpMachine(CycleMachine):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, section):
+        super().__init__(section=section)
         self.name = 'waterpump'

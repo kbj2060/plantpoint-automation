@@ -1,12 +1,12 @@
 import time
 from datetime import datetime
 from abc import *
-from typing import List
+from interfaces.Section import MachineSection
 
 
 class BaseMachine:
-    def __init__(self, machine_section):
-        self.section = machine_section
+    def __init__(self, section: MachineSection):
+        self.section = section.section
         self.name = ''
         self.automation_type = ''
         self.enable = None
@@ -30,8 +30,8 @@ class BaseMachine:
 
 
 class RangeMachine(BaseMachine):
-    def __init__(self, machine_section):
-        super().__init__(machine_section=machine_section)
+    def __init__(self, section):
+        super().__init__(section=section)
 
     def set_automation(self, _type, enable, start, end):
         self.automation_type = _type
@@ -41,8 +41,8 @@ class RangeMachine(BaseMachine):
 
 
 class TemperatureRangeMachine(RangeMachine):
-    def __init__(self, machine_section):
-        super().__init__(machine_section=machine_section)
+    def __init__(self, section):
+        super().__init__(section=section)
 
     def check_temperature(self, temperature):
         raise NotImplementedError()
@@ -55,8 +55,8 @@ class TemperatureRangeMachine(RangeMachine):
 
 
 class TimeRangeMachine(RangeMachine):
-    def __init__(self, machine_section):
-        super().__init__(machine_section=machine_section)
+    def __init__(self, section):
+        super().__init__(section=section)
 
     def check_hour(self, current_hour):
         return self.start[0] <= current_hour < self.end[0]
@@ -69,8 +69,8 @@ class TimeRangeMachine(RangeMachine):
 
 
 class CycleMachine(BaseMachine):
-    def __init__(self, machine_section):
-        super().__init__(machine_section=machine_section)
+    def __init__(self, section):
+        super().__init__(section=section)
         self.term = 0
 
     def set_automation(self, _type, enable, start, end, term):
