@@ -14,4 +14,6 @@ DB_HOST = 'localhost'
 DB_USER = 'root'
 DB_PASSWORD = '01055646565'
 
-GET_SECTION_SQL = 'SELECT environmentSection, section FROM iot.environment_section;'
+GET_SECTION_SQL = 'SELECT section, environmentSection FROM iot.environment_section;'
+GET_MACHINE_SQL = 'SELECT ms.machineSection, m.machine from iot.machine m ' \
+                  'INNER JOIN iot.machine_section ms ON m.machineSectionId = ms.id'

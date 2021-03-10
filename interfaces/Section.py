@@ -1,19 +1,21 @@
-from abc import ABCMeta
+from typing import List
 
 
-class Section(metaclass=ABCMeta):
-    def __init__(self):
-        pass
-
-
-class EnvironmentSection(Section):
-    def __init__(self, e_section):
+class EnvironmentSection:
+    def __init__(self, e_section: str):
         super().__init__()
         self.e_section = e_section
 
 
-class MachineSection(Section):
-    def __init__(self, m_section: str, e_sections: list):
+class MachineSection:
+    def __init__(self, m_section: str):
         super().__init__()
+        self.m_section = m_section
+
+
+class Section:
+    def __init__(self,
+                 m_section: MachineSection,
+                 e_sections: List[EnvironmentSection]):
         self.m_section = m_section
         self.e_sections = e_sections

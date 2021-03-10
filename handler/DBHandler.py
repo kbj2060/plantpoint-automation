@@ -14,6 +14,7 @@ class DBHandler:
         self.cursor.execute(constants.GET_SECTION_SQL)
         return self.cursor.fetchall()
 
+    def get_machines(self):
+        self.cursor.execute(constants.GET_MACHINE_SQL)
+        return self.cursor.fetchall()
 
-db = DBHandler()
-print(db.get_sections())

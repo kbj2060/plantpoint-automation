@@ -1,10 +1,5 @@
-from abc import ABCMeta, abstractmethod
-
-from handler.DBHandler import DBHandler
-from handler.HttpHandler import HttpHandler
-from pprint import pprint
-from interfaces.Machine import Machine
-from machines import WaterPumpMachine
+from abc import abstractmethod
+from interfaces.Machine import BaseMachine
 
 
 def handle_arr_length(arr):
@@ -14,80 +9,61 @@ def handle_arr_length(arr):
         return arr[0]
 
 
-class Store:
-    def __init__(self, machine_section: str):
-        self.httpHandler = HttpHandler()
-        self.db = DBHandler()
-        self.environments = self.httpHandler.get_environments(machine_section)
-        self.switches = self.httpHandler.get_switches(machine_section)
-        self.automations = self.httpHandler.get_automations(machine_section)
-        self.sections = self.db.get_sections()
-
-
-class BaseMachineCollector(metaclass=ABCMeta):
+class BaseMachineSetter:
     def __init__(self, automations, switches):
         self.switches = switches
         self.automations = automations
 
     @staticmethod
-    def set_mqtt(machine: Machine):
+    def set_mqtt(machine: BaseMachine):
         machine.set_mqtt(topic=f"switch/{machine.section}/{machine.name}")
 
     @abstractmethod
-    def set_automation(self, machine: Machine):
+    def set_automation(self, machine: BaseMachine):
         raise NotImplementedError()
 
-    def set_status(self, machine: Machine):
+    def set_status(self, machine: BaseMachine):
         status = handle_arr_length(
             [x['status'] for x in self.switches if x['machine'] == machine.name]
         )
         machine.set_status(status=status)
 
-    def fit(self, machine: Machine):
+    def fit(self, machine: BaseMachine):
         self.set_automation(machine)
         self.set_mqtt(machine)
         self.set_status(machine)
 
 
-class RangeCollector(BaseMachineCollector):
+class RangeSetter(BaseMachineSetter):
     def __init__(self, automations, switches):
         super().__init__(automations=automations, switches=switches)
-        # super(RangeCollector, self).__init__(automations=automations, switches=switches)
 
-    def set_automation(self, machine: Machine):
+    def set_automation(self, machine: BaseMachine):
         automation = handle_arr_length(
             [x for x in self.automations if x['machine'] == machine.name]
         )
 
         machine.set_automation(
             _type=automation['automationType'],
-            section=automation['machineSection'],
             enable=automation['enable'],
             start=automation['start'],
             end=automation['end'],
         )
 
 
-class CycleCollector(BaseMachineCollector):
+class CycleSetter(BaseMachineSetter):
     def __init__(self, automations, switches):
         super().__init__(automations=automations, switches=switches)
 
-    def set_automation(self, machine: Machine):
+    def set_automation(self, machine: BaseMachine):
         automation = handle_arr_length(
             [x for x in self.automations if x['machine'] == machine.name]
         )
 
         machine.set_automation(
             _type=automation['automationType'],
-            section=automation['machineSection'],
             enable=automation['enable'],
             start=automation['start'],
             end=automation['end'],
             term=automation['term'],
         )
-
-
-store = Store('s1')
-wt = WaterPumpMachine()
-CycleCollector(store.automations, store.switches).fit(wt)
-pprint(vars(wt))

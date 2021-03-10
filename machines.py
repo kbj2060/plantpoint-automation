@@ -1,7 +1,7 @@
 from interfaces.Machine import TimeRangeMachine, TemperatureRangeMachine, CycleMachine
 
 
-class LEDMachine(TimeRangeMachine):
+class LedMachine(TimeRangeMachine):
     def __init__(self):
         super().__init__()
         self.name = 'led'
@@ -10,7 +10,7 @@ class LEDMachine(TimeRangeMachine):
 class HeaterMachine(TemperatureRangeMachine):
     def __init__(self):
         super().__init__()
-        self.name = 'header'
+        self.name = 'heater'
 
     def check_temperature(self, temperature):
         if temperature > self.end[0]:

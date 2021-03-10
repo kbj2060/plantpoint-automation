@@ -1,13 +1,14 @@
 import time
 from datetime import datetime
 from abc import *
+from typing import List
 
 
-class Machine(metaclass=ABCMeta):
-    def __init__(self):
+class BaseMachine:
+    def __init__(self, machine_section):
+        self.section = machine_section
         self.name = ''
         self.automation_type = ''
-        self.section = ''
         self.enable = None
         self.status = None
         self.mqtt_topic = ''
@@ -28,21 +29,20 @@ class Machine(metaclass=ABCMeta):
         return self.status == 1
 
 
-class RangeMachine(Machine):
-    def __init__(self):
-        super().__init__()
+class RangeMachine(BaseMachine):
+    def __init__(self, machine_section):
+        super().__init__(machine_section=machine_section)
 
-    def set_automation(self, _type, section, enable, start, end):
+    def set_automation(self, _type, enable, start, end):
         self.automation_type = _type
-        self.section = section
         self.enable = enable
         self.start = start
         self.end = end
 
 
 class TemperatureRangeMachine(RangeMachine):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, machine_section):
+        super().__init__(machine_section=machine_section)
 
     def check_temperature(self, temperature):
         raise NotImplementedError()
@@ -55,8 +55,8 @@ class TemperatureRangeMachine(RangeMachine):
 
 
 class TimeRangeMachine(RangeMachine):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, machine_section):
+        super().__init__(machine_section=machine_section)
 
     def check_hour(self, current_hour):
         return self.start[0] <= current_hour < self.end[0]
@@ -68,14 +68,13 @@ class TimeRangeMachine(RangeMachine):
         return not self.check_hour(current_hour) and self.check_machine_on()
 
 
-class CycleMachine(Machine):
-    def __init__(self):
-        super().__init__()
+class CycleMachine(BaseMachine):
+    def __init__(self, machine_section):
+        super().__init__(machine_section=machine_section)
         self.term = 0
 
-    def set_automation(self, _type, section, enable, start, end, term):
+    def set_automation(self, _type, enable, start, end, term):
         self.automation_type = _type
-        self.section = section
         self.enable = enable
         self.start = start
         self.end = end
@@ -86,8 +85,8 @@ class CycleMachine(Machine):
         return int(date.split(':')[0]) if int(date.split(':')[0]) != 24 else 0
 
     # switch_created : db 에서 auto가 자동으로 작동한 마지막 시간
-    def check_term(self, switch_created):
-        diff = (datetime.now() - datetime.strptime(switch_created)).days
+    def check_term(self, switch_created: str):
+        diff = (datetime.now() - datetime.strptime(switch_created, format='YYYY-MM-DD')).days
         if diff >= self.term or diff == 0:
             return True
         else:
@@ -105,3 +104,9 @@ class CycleMachine(Machine):
 
     def check_off_condition(self, switch_created):
         return self.check_machine_on() and not (self.check_term(switch_created) and self.check_hour())
+
+
+class Machines:
+    def __init__(self, section: str, machines: list):
+        self.machines = machines
+        self.section = section

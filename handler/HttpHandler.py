@@ -2,6 +2,8 @@ import constants
 import requests
 import json
 
+from interfaces.Section import MachineSection, EnvironmentSection
+
 
 class HttpHandler:
     def __init__(self):
@@ -14,24 +16,20 @@ class HttpHandler:
         token = requests.post(f'{constants.SIGNIN_URL}', data=data, headers=header)
         self.access_header = {"Authorization": f"Bearer {token.json()['access_token']}"}
 
-    def get_automations(self, machine_section):
+    def get_automations(self, ms: MachineSection):
         return requests.get(
-            f'{constants.AUTOMATION_READ_URL}/{machine_section}',
+            f'{constants.AUTOMATION_READ_URL}/{ms.m_section}',
             headers=self.access_header
         ).json()['lastAutomations']
 
-    def get_environments(self, environment_section):
+    def get_environments(self, es: EnvironmentSection):
         return requests.get(
-            f'{constants.ENVIRONMENT_READ_URL}/{environment_section}',
+            f'{constants.ENVIRONMENT_READ_URL}/{es.e_section}',
             headers=self.access_header
         ).json()
 
-    def get_switches(self, machine_section):
+    def get_switches(self, ms: MachineSection):
         return requests.get(
-            f'{constants.SWITCH_READ_URL}/{machine_section}',
+            f'{constants.SWITCH_READ_URL}/{ms.m_section}',
             headers=self.access_header
         ).json()
-
-
-# http = HttpHandler
-# print(http().get_automations('s1'))
