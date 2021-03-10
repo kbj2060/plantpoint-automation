@@ -33,5 +33,5 @@ class HttpHandler:
         ).json()
 
 
-http = HttpHandler
-print(http().get_automations('s1'))
+# http = HttpHandler
+# print(http().get_automations('s1'))

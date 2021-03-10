@@ -5,14 +5,24 @@ from abc import *
 
 class Machine(metaclass=ABCMeta):
     def __init__(self):
-        self.machine_name = ''
+        self.name = ''
         self.automation_type = ''
-        self.machine_section = ''
+        self.section = ''
         self.enable = None
         self.status = None
         self.mqtt_topic = ''
         self.start = []
         self.end = []
+
+    def set_status(self, status):
+        self.status = status
+
+    def set_mqtt(self, topic):
+        self.mqtt_topic = topic
+
+    @abstractmethod
+    def set_automation(self, **kw):
+        raise NotImplementedError()
 
     def check_machine_on(self):
         return self.status == 1
@@ -24,13 +34,10 @@ class RangeMachine(Machine):
 
     def set_automation(self, _type, section, enable, start, end):
         self.automation_type = _type
-        self.machine_section = section
+        self.section = section
         self.enable = enable
         self.start = start
         self.end = end
-
-    def set_status(self, status):
-        self.status = status
 
 
 class TemperatureRangeMachine(RangeMachine):
@@ -66,17 +73,13 @@ class CycleMachine(Machine):
         super().__init__()
         self.term = 0
 
-    def set_automation(self, name, _type, section, enable, start, end, term):
+    def set_automation(self, _type, section, enable, start, end, term):
         self.automation_type = _type
-        self.machine_name = name
-        self.machine_section = section
+        self.section = section
         self.enable = enable
         self.start = start
         self.end = end
         self.term = term
-
-    def set_status(self, status):
-        self.status = status
 
     @staticmethod
     def get_hour(date):
@@ -102,58 +105,3 @@ class CycleMachine(Machine):
 
     def check_off_condition(self, switch_created):
         return self.check_machine_on() and not (self.check_term(switch_created) and self.check_hour())
-
-
-class LEDMachine(TimeRangeMachine):
-    def __init__(self):
-        super().__init__()
-        self.machine_name = 'led'
-
-
-class HeaterMachine(TemperatureRangeMachine):
-    def __init__(self):
-        super().__init__()
-        self.machine_name = 'header'
-
-    def check_temperature(self, temperature):
-        if temperature > self.end[0]:
-            return False
-        elif temperature < self.start[0]:
-            return True
-        else:
-            return None
-
-
-class CoolerMachine(TemperatureRangeMachine):
-    def __init__(self):
-        super().__init__()
-        self.machine_name = 'cooler'
-
-    def check_temperature(self, temperature):
-        if temperature < self.start[0]:
-            return False
-        elif temperature > self.end[0]:
-            return True
-        else:
-            return None
-
-
-class FanMachine(CycleMachine):
-    def __init__(self):
-        super().__init__()
-        self.machine_name = 'fan'
-
-
-class RoofFanMachine(CycleMachine):
-    def __init__(self):
-        super().__init__()
-        self.machine_name = 'roofFan'
-
-
-class WaterPumpMachine(CycleMachine):
-    def __init__(self):
-        super().__init__()
-        self.machine_name = 'waterpump'
-
-
-
