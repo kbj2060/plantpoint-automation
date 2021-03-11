@@ -14,8 +14,6 @@ class MachineSection:
 
 
 class Section:
-    def __init__(self,
-                 m_section: MachineSection,
-                 e_sections: List[EnvironmentSection]):
+    def __init__(self, m_section: MachineSection, e_sections: List[EnvironmentSection]):
         self.m_section = m_section
         self.e_sections = e_sections

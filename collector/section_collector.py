@@ -1,7 +1,7 @@
 from typing import List
 
 from collector.utils import grouping
-from handler.DBHandler import DBHandler
+from handler.db_handler import DBHandler
 from interfaces.Section import MachineSection, EnvironmentSection, Section
 
 

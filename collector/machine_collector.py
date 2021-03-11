@@ -1,9 +1,9 @@
 from typing import List
 
 from collector.utils import grouping
-from handler.DBHandler import DBHandler
+from handler.db_handler import DBHandler
 from interfaces.Machine import Machines
-from manger.ClassManager import get_machine
+from manger.class_manager import get_machine
 
 
 class MachineCollector:
@@ -16,5 +16,6 @@ class MachineCollector:
         for ms in self.grouped_machines.keys():
             machine_names = self.grouped_machines[ms]
             machines = [get_machine(m) for m in machine_names]
-            self.machine_holder.append(Machines(section=ms, machines=machines))
+            self.machine_holder.append(Machines(m_section=ms, machines=machines))
         return self.machine_holder
+

@@ -1,5 +1,7 @@
+from controller.machine_controller import BaseCycleMachineController, TemperatureRangeMachineController, \
+    TimeRangeMachineController
 from reference.envrionments import *
-from manger.MachineManager import *
+from manger.machine_manager import *
 from reference.machines import *
 
 
@@ -16,6 +18,8 @@ def get_machine(name):
         return FanMachine
     elif name == 'roofFan':
         return RoofFanMachine
+    else:
+        raise ValueError()
 
 
 def get_environment(name):
@@ -25,6 +29,8 @@ def get_environment(name):
         return Co2
     elif name == 'humidity':
         return Humidity
+    else:
+        raise ValueError()
 
 
 def get_manager(_type):
@@ -32,3 +38,16 @@ def get_manager(_type):
         return CycleManager
     elif _type == 'range':
         return RangeManager
+    else:
+        raise ValueError()
+
+
+def get_controller(_type):
+    if _type == 'CycleMachine':
+        return BaseCycleMachineController
+    elif _type == 'TemperatureRangeMachine':
+        return TemperatureRangeMachineController
+    elif _type == 'TimeRangeMachine':
+        return TimeRangeMachineController
+    else:
+        raise ValueError()
