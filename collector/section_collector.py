@@ -1,14 +1,13 @@
 from typing import List
 
 from collector.utils import grouping
-from handler.db_handler import DBHandler
 from interfaces.Section import MachineSection, EnvironmentSection, Section
+from resources import db
 
 
 class SectionCollector:
     def __init__(self):
-        self.db = DBHandler()
-        self.grouped_sections = grouping(self.db.get_sections())
+        self.grouped_sections = grouping(db.get_sections())
         self.section_holder = list()
 
     def collect_sections(self) -> List[Section]:

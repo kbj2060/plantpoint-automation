@@ -2,8 +2,7 @@ import time
 from datetime import datetime
 from statistics import mean
 from constants import AUTOMATION_DISABLED_REPORT, AUTOMATION_STAY_REPORT, AUTOMATION_ON_REPORT, AUTOMATION_OFF_REPORT, ON, OFF
-from handler.db_handler import DBHandler
-from handler.http_handler import HttpHandler
+from resources import ws, http, db
 
 
 def print_disabled(machine_name):
@@ -23,10 +22,9 @@ def print_off(machine_name):
 
 
 class BaseController:
-    def __init__(self, machine, environments, ws):
+    def __init__(self, machine, environments):
         self.machine = machine
         self.environments = environments
-        self.ws = ws
 
     def check_machine_on(self) -> bool:
         return self.machine.status == 1
@@ -42,19 +40,19 @@ class BaseController:
             print_disabled(self.machine.name)
         elif self.check_on_condition(condition):
             print_on(self.machine.name)
-            HttpHandler().post_switch(self.machine.section, self.machine.name, ON)
-            self.ws.emit_switch(self.machine.section, self.machine.name, True)
+            http.post_switch(self.machine.section, self.machine.name, ON)
+            ws.emit_switch(self.machine.section, self.machine.name, True)
         elif self.check_off_condition(condition):
             print_off(self.machine.name)
-            HttpHandler().post_switch(self.machine.section, self.machine.name, OFF)
-            self.ws.emit_switch(self.machine.section, self.machine.name, False)
+            http.post_switch(self.machine.section, self.machine.name, OFF)
+            ws.emit_switch(self.machine.section, self.machine.name, False)
         else:
             print_stay(self.machine.name)
 
 
 class TemperatureRangeMachineController(BaseController):
-    def __init__(self, machine, environments, ws):
-        super(TemperatureRangeMachineController, self).__init__(machine=machine, environments=environments, ws=ws)
+    def __init__(self, machine, environments):
+        super(TemperatureRangeMachineController, self).__init__(machine=machine, environments=environments)
 
     @staticmethod
     def get_avg_temp(environments):
@@ -67,13 +65,13 @@ class TemperatureRangeMachineController(BaseController):
         return self.check_machine_on() and not self.machine.check_temperature(temperature)
 
     def control(self, condition=None):
-        condition = self.get_avg_temp(self.environments)
-        super().control(condition)
+        temperature = self.get_avg_temp(self.environments)
+        super().control(temperature)
 
 
 class TimeRangeMachineController(BaseController):
-    def __init__(self, machine, environments, ws):
-        super(TimeRangeMachineController, self).__init__(machine=machine, environments=environments, ws=ws)
+    def __init__(self, machine, environments):
+        super(TimeRangeMachineController, self).__init__(machine=machine, environments=environments)
 
     def check_hour(self, current_hour):
         return self.machine.start[0] <= current_hour < self.machine.end[0]
@@ -85,13 +83,13 @@ class TimeRangeMachineController(BaseController):
         return not self.check_hour(current_hour) and self.check_machine_on()
 
     def control(self, condition=None):
-        condition = int(time.strftime('%H', time.localtime(time.time())))
-        super().control(condition)
+        current_hour = int(time.strftime('%H', time.localtime(time.time())))
+        super().control(current_hour)
 
 
 class BaseCycleMachineController(BaseController):
-    def __init__(self, machine, environments, ws):
-        super(BaseCycleMachineController, self).__init__(machine=machine, environments=environments, ws=ws)
+    def __init__(self, machine, environments):
+        super(BaseCycleMachineController, self).__init__(machine=machine, environments=environments)
 
     @staticmethod
     def get_hour(date):
@@ -118,5 +116,5 @@ class BaseCycleMachineController(BaseController):
         return self.check_machine_on() and not (self.check_term(switch_created) and self.check_hour())
 
     def control(self, condition=None):
-        condition = DBHandler().get_auto_created(self.machine.name)
-        super().control(condition)
+        switch_created = db.get_auto_created(self.machine.name)
+        super().control(switch_created)
