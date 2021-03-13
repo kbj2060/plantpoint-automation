@@ -1,12 +1,6 @@
 from abc import abstractmethod
 from interfaces.Machine import BaseMachine
-
-
-def handle_arr_length(arr):
-    if len(arr) != 1:
-        raise ValueError()
-    else:
-        return arr[0]
+from utils import handle_arr_length
 
 
 class BaseMachineManager:
@@ -24,7 +18,7 @@ class BaseMachineManager:
 
     def set_status(self, machine: BaseMachine):
         status = handle_arr_length(
-            [x['status'] for x in self.switches if x['machine'] == machine.name]
+            [x.status for x in self.switches if x.name == machine.name]
         )
         machine.set_status(status=status)
 

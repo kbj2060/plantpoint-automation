@@ -1,6 +1,3 @@
-from abc import *
-
-
 class BaseMachine:
     def __init__(self, section: str):
         self.section = section
@@ -11,6 +8,7 @@ class BaseMachine:
         self.mqtt_topic = ''
         self.start = []
         self.end = []
+        self.term = 0
 
     def set_status(self, status):
         self.status = status
@@ -67,7 +65,7 @@ class TimeRangeMachine(RangeMachine):
 class CycleMachine(BaseMachine):
     def __init__(self, section: str):
         super().__init__(section=section)
-        self.term = 0
+        # self.term = 0
 
     def set_automation(self, _type: str, enable: bool, start: list, end: list, term: int):
         self.automation_type = _type

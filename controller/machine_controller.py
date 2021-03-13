@@ -1,24 +1,8 @@
 import time
 from datetime import datetime
 from statistics import mean
-from constants import AUTOMATION_DISABLED_REPORT, AUTOMATION_STAY_REPORT, AUTOMATION_ON_REPORT, AUTOMATION_OFF_REPORT, ON, OFF
+from constants import ON, OFF
 from resources import ws, http, db
-
-
-def print_disabled(machine_name):
-    print(f"{machine_name} {AUTOMATION_DISABLED_REPORT}")
-
-
-def print_stay(machine_name):
-    print(f"{machine_name} {AUTOMATION_STAY_REPORT}")
-
-
-def print_on(machine_name):
-    print(f"{machine_name} {AUTOMATION_ON_REPORT}")
-
-
-def print_off(machine_name):
-    print(f"{machine_name} {AUTOMATION_OFF_REPORT}")
 
 
 class BaseController:
@@ -37,17 +21,17 @@ class BaseController:
 
     def control(self, condition):
         if not self.machine.enable:
-            print_disabled(self.machine.name)
+            return
         elif self.check_on_condition(condition):
-            print_on(self.machine.name)
+            self.machine.status = ON
             http.post_switch(self.machine.section, self.machine.name, ON)
             ws.emit_switch(self.machine.section, self.machine.name, True)
         elif self.check_off_condition(condition):
-            print_off(self.machine.name)
+            self.machine.status = OFF
             http.post_switch(self.machine.section, self.machine.name, OFF)
             ws.emit_switch(self.machine.section, self.machine.name, False)
         else:
-            print_stay(self.machine.name)
+            return
 
 
 class TemperatureRangeMachineController(BaseController):

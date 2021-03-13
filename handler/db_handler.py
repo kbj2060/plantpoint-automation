@@ -1,7 +1,8 @@
 import pymysql
-from constants import DB_HOST, DB_USER, DB_PASSWORD, GET_SECTION_SQL, GET_MACHINE_SQL, GET_AUTO_SWITCH_SQL, \
+from constants import GET_SECTION_SQL, GET_MACHINE_SQL, GET_AUTO_SWITCH_SQL, \
      DB_LOGGER_MSG
 from decorator.logger_decorator import BasicLogger
+from handler.secret import DB_HOST, DB_USER, DB_PASSWORD
 from logger.custom_logger import custom_logger
 
 
