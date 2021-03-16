@@ -1,8 +1,6 @@
 import logger.banner
 from collector.machine_collector import MachineCollector
 from collector.section_collector import SectionCollector
-from constants import ON
-from logger.custom_logger import custom_logger
 from logger.explainer import Explainer
 from manger.class_manager import get_machine, get_manager, get_controller
 from store import Store
@@ -25,8 +23,7 @@ if __name__ == '__main__':
             store.machines.append(machine)
 
         explainer = Explainer(machines=store.machines, prev_machines=store.switches, section=section_ref.m_section.section)
-        explainer.explain_automation()
-        explainer.explain_switch()
+        explainer.result()
 
     ws.disconnect()
     db.disconnect()
