@@ -8,11 +8,9 @@ ON = 1
 OFF = 0
 
 NAME = "Auto"
-USERNAME = ''
-PASSWORD = ''
 
 SOCKET_ENDPOINT = 'http://localhost:4000'
-SEND_SWITCH_TO_SERVER = 'sendSwitchToServer',
+SEND_SWITCH_TO_SERVER = 'sendSwitchToServer'
 SEND_SWITCH_TO_CLIENT = 'sendSwitchToClient'
 
 DB_HOST = ''

@@ -8,9 +8,7 @@ from logger.custom_logger import custom_logger
 class WebSocketHandler:
     def __init__(self):
         self.sio = socketio.Client()
-        self.sio.connect(SOCKET_ENDPOINT,
-                         socketio_path='/ws',
-                         namespaces='/switch')
+        self.sio.connect(SOCKET_ENDPOINT)
 
     def __del__(self):
         self.disconnect()
