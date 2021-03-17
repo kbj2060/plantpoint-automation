@@ -23,5 +23,5 @@ class WebSocketHandler:
             "machineSection": machine_section,
             "machine": machine,
             "status": status,
-        }, namespace='/switch')
+        })
 
