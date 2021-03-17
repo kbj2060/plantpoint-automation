@@ -1,4 +1,4 @@
-AUTOMATION_READ_URL = 'http://121.157.207.47/:9000/automations/read'
+AUTOMATION_READ_URL = 'http://121.157.207.47:9000/automations/read'
 SIGNIN_URL = 'http://121.157.207.47:9000/authentication/signin'
 ENVIRONMENT_READ_URL = 'http://121.157.207.47:9000/environments/read/last'
 SWITCH_READ_URL = 'http://121.157.207.47:9000/switches/read/last'
