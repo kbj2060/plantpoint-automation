@@ -1,15 +1,17 @@
-AUTOMATION_READ_URL = 'http://121.157.207.47:9000/automations/read'
-SIGNIN_URL = 'http://121.157.207.47:9000/authentication/signin'
-ENVIRONMENT_READ_URL = 'http://121.157.207.47:9000/environments/read/last'
-SWITCH_READ_URL = 'http://121.157.207.47:9000/switches/read/last'
-SWITCH_CREATE_URL = 'http://121.157.207.47:9000/switches/create'
+from reference.secret import IP
+
+AUTOMATION_READ_URL = f'http://{IP}:9000/automations/read'
+SIGNIN_URL = f'http://{IP}:9000/authentication/signin'
+ENVIRONMENT_READ_URL = f'http://{IP}:9000/environments/read/last'
+SWITCH_READ_URL = f'http://{IP}:9000/switches/read/last'
+SWITCH_CREATE_URL = f'http://{IP}:9000/switches/create'
 
 ON = 1
 OFF = 0
 
 NAME = "Auto"
 
-SOCKET_ENDPOINT = 'http://121.157.207.47:4000'
+SOCKET_ENDPOINT = f'http://{IP}:4000'
 SEND_SWITCH_TO_SERVER = 'sendSwitchToServer'
 SEND_SWITCH_TO_CLIENT = 'sendSwitchToClient'
 
