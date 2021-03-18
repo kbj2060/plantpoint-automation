@@ -4,7 +4,7 @@ from constants import \
     NAME, SIGNIN_URL, AUTOMATION_READ_URL, ENVIRONMENT_READ_URL, SWITCH_READ_URL,\
     SWITCH_CREATE_URL, HTTP_LOGGER_GET_MSG, HTTP_LOGGER_POST_MSG
 from decorator.logger_decorator import BasicLogger
-from handler.secret import USERNAME, PASSWORD
+from reference.secret import USERNAME, PASSWORD
 from interfaces.Section import MachineSection, EnvironmentSection
 from logger.custom_logger import custom_logger
 
