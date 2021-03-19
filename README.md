@@ -42,9 +42,7 @@ IP = 'localhost'
 
 ![automation_flow](./documentation/automation_flow.png)
 
-
-
-#### Preparation
+#### 1. Preparation
 
 Handlers : This objects are helper objects for collecting data or sending api or web sockets.
 
@@ -54,15 +52,15 @@ Store : Read Data from Backend through http api. This store object would be used
 
 Manager : Classify and find proper object or set the prepared data on the machines objects.
 
+<br/>
 
-
-#### Controller
+#### 2. Controller
 
 Controller : Controllers are divided into TemperatureRange, TimeRange, Cycle machines. With these prepared machine object, controllers set the right machine power.
 
+<br/>
 
-
-#### Logger
+#### 3. Logger
 
 Explainer : Log the results into files and terminal.
 
