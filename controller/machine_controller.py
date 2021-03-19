@@ -2,7 +2,6 @@ import time
 from datetime import datetime
 from statistics import mean
 from constants import ON, OFF
-from logger.custom_logger import custom_logger
 from resources import ws, http, db
 
 
@@ -44,15 +43,9 @@ class TemperatureRangeMachineController(BaseController):
         return mean([env['temperature'] for env in environments if env['temperature'] != 0])
 
     def check_on_condition(self, temperature):
-        temperature = 29
-        custom_logger.debug(self.machine.name, temperature)
-        custom_logger.debug(not self.check_machine_on() and self.machine.check_temperature(temperature))
         return not self.check_machine_on() and self.machine.check_temperature(temperature)
 
     def check_off_condition(self, temperature):
-        temperature = 29
-        custom_logger.debug(self.machine.name, temperature)
-        custom_logger.debug(self.check_machine_on() and not self.machine.check_temperature(temperature))
         return self.check_machine_on() and not self.machine.check_temperature(temperature)
 
     def control(self, condition=None):
