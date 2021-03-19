@@ -22,6 +22,8 @@ class BaseController:
     def control(self, condition):
         if not self.machine.enable:
             return
+        elif self.check_on_condition(condition) is None:
+            return
         elif self.check_on_condition(condition):
             self.machine.status = ON
             http.post_switch(self.machine.section, self.machine.name, ON)
