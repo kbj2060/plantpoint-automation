@@ -20,9 +20,9 @@ if __name__ == '__main__':
             manager(store.automations, store.switches).fit(machine)
             controller = get_controller(machine.__str__())(machine, store.environments)
             controller.control()
-            store.machines.append(machine)
+            store.automated_switches.append(machine)
 
-        explainer = Explainer(machines=store.machines, prev_machines=store.switches, section=section_ref.m_section.section)
+        explainer = Explainer(machines=store.automated_switches, prev_machines=store.switches, section=section_ref.m_section.section)
         explainer.result()
 
     ws.disconnect()
