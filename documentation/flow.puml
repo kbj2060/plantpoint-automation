@@ -1,0 +1,56 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+package "Handlers" {
+    [DBHandler] --> MySql
+    [HttpHandler] --> HTTP
+    [WebSocketHandler] --> WebSocket
+}
+
+package "Collectors" {
+    [MachinesCollector] --> DBHandler
+    [SectionsCollector] --> DBHandler
+}
+
+
+package "Store" {
+  [environments] --> HttpHandler
+  [switches] --> HttpHandler
+  [switches] --> Explainer
+  [automations] --> HttpHandler
+  [automated_switches] --> Managers
+  [automated_switches] --> Explainer
+}
+
+package "Managers" {
+    [ClassManager] --> Controller
+    [MachineManager] --> Controller
+}
+
+package "Explainer" {
+    [explainer]
+}
+
+package "Controller" {
+    [TemperatureRangeMachineController]
+    [TimeRangeMachineController]
+    [CycleMachineController]
+}
+
+cloud "HTTP" {
+    [NestJS]
+}
+
+cloud "WebSocket" {
+ [SocketIO]
+}
+
+database "MySql" {
+  folder "Machines" {
+    [Machine Info]
+  }
+  frame "Sections" {
+    [Section Info]
+  }
+}
+@enduml
