@@ -43,9 +43,13 @@ class TemperatureRangeMachineController(BaseController):
         return mean([env['temperature'] for env in environments if env['temperature'] != 0])
 
     def check_on_condition(self, temperature):
+        if self.machine.check_temperature(temperature) is None:
+            return False
         return not self.check_machine_on() and self.machine.check_temperature(temperature)
 
     def check_off_condition(self, temperature):
+        if self.machine.check_temperature(temperature) is None:
+            return False
         return self.check_machine_on() and not self.machine.check_temperature(temperature)
 
     def control(self, condition=None):

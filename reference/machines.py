@@ -21,8 +21,10 @@ class HeaterMachine(TemperatureRangeMachine):
     def check_temperature(self, temperature):
         if temperature > self.end[0]:
             return False
-        else:
+        elif temperature < self.start[0]:
             return True
+        else:
+            return None
 
 
 class CoolerMachine(TemperatureRangeMachine):
@@ -34,10 +36,12 @@ class CoolerMachine(TemperatureRangeMachine):
         return 'TemperatureRangeMachine'
 
     def check_temperature(self, temperature):
-        if temperature < self.start[0]:
+        if temperature > self.end[0]:
+            return True
+        elif temperature < self.start[0]:
             return False
         else:
-            return True
+            return None
 
 
 class FanMachine(CycleMachine):
