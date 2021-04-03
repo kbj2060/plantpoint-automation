@@ -2,6 +2,7 @@ import time
 from datetime import datetime
 from statistics import mean
 from constants import ON, OFF
+from logger.custom_logger import custom_logger
 from resources import ws, http, db
 
 

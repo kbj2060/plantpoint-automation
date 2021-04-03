@@ -8,10 +8,7 @@ from logger.custom_logger import custom_logger
 
 class DBHandler:
     def __init__(self):
-        self.host = DB_HOST
-        self.user = DB_USER
-        self.password = DB_PASSWORD
-        self.conn = pymysql.connect(host=self.host, user=self.user, password=self.password, charset='utf8')
+        self.conn = pymysql.connect(host=DB_HOST, user=DB_USER, password=DB_PASSWORD, charset='utf8')
         self.cursor = self.conn.cursor()
 
     @BasicLogger(DB_LOGGER_MSG("Sections"))
@@ -24,7 +21,6 @@ class DBHandler:
         self.cursor.execute(GET_MACHINE_SQL)
         return self.cursor.fetchall()
 
-    @BasicLogger(DB_LOGGER_MSG("Last Date Controlled by Auto"))
     def get_auto_created(self, machine: str):
         self.cursor.execute(GET_AUTO_SWITCH_SQL(machine))
         return self.cursor.fetchall()[0][0]
