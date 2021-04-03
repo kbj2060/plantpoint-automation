@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pymysql
 from constants import GET_SECTION_SQL, GET_MACHINE_SQL, GET_AUTO_SWITCH_SQL, \
      DB_LOGGER_MSG
@@ -21,9 +23,13 @@ class DBHandler:
         self.cursor.execute(GET_MACHINE_SQL)
         return self.cursor.fetchall()
 
+    @BasicLogger(DB_LOGGER_MSG("Last Auto Created"))
     def get_auto_created(self, machine: str):
         self.cursor.execute(GET_AUTO_SWITCH_SQL(machine))
-        return self.cursor.fetchall()[0][0]
+        if not self.cursor.rowcount:
+            return datetime.now()
+        else:
+            return self.cursor.fetchall()[0][0]
 
     def disconnect(self):
         self.conn.close()
