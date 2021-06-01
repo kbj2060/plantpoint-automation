@@ -41,7 +41,11 @@ class TemperatureRangeMachineController(BaseController):
 
     @staticmethod
     def get_avg_temp(environments):
-        return mean([env['temperature'] for env in environments if env['temperature'] != 0])
+        temps = [env['temperature'] for env in environments if env['temperature'] != 0]
+        if len(temps) == 0:
+            return 0
+        else:
+            return mean(temps)
 
     def check_on_condition(self, temperature):
         if self.machine.check_temperature(temperature) is None:
