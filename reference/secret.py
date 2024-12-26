@@ -1,8 +1,0 @@
-USERNAME = 'auto'
-PASSWORD = 'dnjfem2006'
-
-DB_HOST = '192.168.0.3'
-DB_USER = 'root'
-DB_PASSWORD = '01055646565'
-
-IP = '121.157.207.47'

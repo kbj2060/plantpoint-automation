@@ -7,44 +7,47 @@ import json
 import socketio
 import requests
 import os
+from constants import DB_HOST, DB_PASSWORD, DB_USER, MQTT_HOST, MQTT_ID, MQTT_PORT, SOCKET_ADDRESS, SWITCH_SOCKET_ADDRESS, CURRENT_SOCKET_ADDRESS
 
-# TODO [SERVER CHANGE] : Change Directory
-#os.chdir("/home/pi/hydroponics/")
-os.chdir("../")
-with open('values/strings.json', "rt", encoding='UTF8') as string_json:
-    strings = json.load(string_json)
-    WordsTable = strings['WordsTable']
 
-with open('values/defaults.json', "rt", encoding='UTF8') as default_json:
-    defaults = json.load(default_json)
-    DEFAULT_SETTING = defaults['auto']
-    DEFAULT_ENV = defaults['environments']
-    DEFAULT_SWITCHES = defaults['switches']
-    DEFAULT_SECTIONS = defaults['sections']
 
-with open('values/db_conf.json', "rt", encoding='UTF8') as db_conf:
-    conf = json.load(db_conf)
-    DB_HOST = conf['host']
-    DB_USER = conf['user']
-    DB_PW = conf['password']
+# # TODO [SERVER CHANGE] : Change Directory
+# #os.chdir("/home/pi/hydroponics/")
+# os.chdir("../")
+# with open('values/strings.json', "rt", encoding='UTF8') as string_json:
+#     strings = json.load(string_json)
+#     WordsTable = strings['WordsTable']
 
-with open('values/telegram_conf.json', "rt", encoding='UTF8') as tg_conf:
-    telegram_conf = json.load(tg_conf)
-    token = telegram_conf['token']
-    chat_id = telegram_conf['chat_id']
+# with open('values/defaults.json', "rt", encoding='UTF8') as default_json:
+#     defaults = json.load(default_json)
+#     DEFAULT_SETTING = defaults['auto']
+#     DEFAULT_ENV = defaults['environments']
+#     DEFAULT_SWITCHES = defaults['switches']
+#     DEFAULT_SECTIONS = defaults['sections']
 
-with open('values/preferences.json', "rt", encoding='UTF8') as pref_json:
-    preference = json.load(pref_json)
-    SOCKET_PORT = preference['SOCKET_PORT']
-    SOCKET_HOST = preference['SOCKET_HOST']
-    MQTT_PORT = int(preference['MQTT_PORT'])
-    MQTT_HOST = preference['MQTT_BROKER']
-    CLIENT_ID = preference['CLIENT_ID']
-    LED_TOPIC = preference['LED_TOPIC']
-    HEATER_TOPIC = preference['HEATER_TOPIC']
-    COOLER_TOPIC = preference['COOLER_TOPIC']
-    FAN_TOPIC = preference['FAN_TOPIC']
-    WT_TOPIC = preference['WT_TOPIC']
+# with open('values/db_conf.json', "rt", encoding='UTF8') as db_conf:
+#     conf = json.load(db_conf)
+#     DB_HOST = conf['host']
+#     DB_USER = conf['user']
+#     DB_PW = conf['password']
+
+# with open('values/telegram_conf.json', "rt", encoding='UTF8') as tg_conf:
+#     telegram_conf = json.load(tg_conf)
+#     token = telegram_conf['token']
+#     chat_id = telegram_conf['chat_id']
+
+# with open('values/preferences.json', "rt", encoding='UTF8') as pref_json:
+#     preference = json.load(pref_json)
+#     SOCKET_PORT = preference['SOCKET_PORT']
+#     SOCKET_HOST = preference['SOCKET_HOST']
+#     MQTT_PORT = int(preference['MQTT_PORT'])
+#     MQTT_HOST = preference['MQTT_BROKER']
+#     CLIENT_ID = preference['CLIENT_ID']
+#     LED_TOPIC = preference['LED_TOPIC']
+#     HEATER_TOPIC = preference['HEATER_TOPIC']
+#     COOLER_TOPIC = preference['COOLER_TOPIC']
+#     FAN_TOPIC = preference['FAN_TOPIC']
+#     WT_TOPIC = preference['WT_TOPIC']
 
 min_index, max_index = 0, 1
 
@@ -75,10 +78,10 @@ class Automagic(MQTT):
         self.switches = DEFAULT_SWITCHES
         self.sections = DEFAULT_SECTIONS
 
-        self.conn = pymysql.connect(host=DB_HOST, user=DB_USER, password=DB_PW, charset='utf8')
+        self.conn = pymysql.connect(host=DB_HOST, user=DB_USER, password=DB_PASSWORD, charset='utf8')
         self.cursor = self.conn.cursor()
 
-        self.client = mqtt.Client(client_id=CLIENT_ID)
+        self.client = mqtt.Client(client_id=MQTT_ID)
         self.client.on_connect = self.on_connect
         self.client.on_disconnect = self.on_disconnect
         self.client.on_publish = self.on_publish
@@ -86,7 +89,7 @@ class Automagic(MQTT):
         # self.client.loop_start()
 
         self.sio = socketio.Client()
-        self.sio.connect(f"http://{SOCKET_HOST}:{SOCKET_PORT}")
+        self.sio.connect(f"http://{SOCKET_ADDRESS}")
 
         self.fetch_switches()
         self.fetch_auto()

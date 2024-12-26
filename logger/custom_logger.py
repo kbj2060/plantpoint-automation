@@ -10,10 +10,11 @@ stay_level = logger.level("STAY", no=13, color="<fg #a2d5c6>")
 disabled_level = logger.level("DISABLED", no=14, color="<fg #e8d21d>")
 
 logger.add(f".logs/{korean_time}.log",
-           colorize=True,
-           rotation="12:00",
-           retention="1 days",
-           compression="zip",
-           format="{time:YYYY-MM-DD at HH:mm:ss} | {level:8} | {message}",
-           enqueue=True)
+            colorize=True,
+            rotation="12:00",
+            retention="1 days",
+            compression="zip",
+            format="{time:YYYY-MM-DD at HH:mm:ss} | {level:8} | {message}",
+            enqueue=True)
+
 custom_logger = logger

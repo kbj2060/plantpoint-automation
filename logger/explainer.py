@@ -4,7 +4,7 @@ from tabulate import tabulate
 
 from constants import ON, BOUNDARY_ERROR_MSG
 from interfaces.Machine import BaseMachine
-from interfaces.SwitchResponse import SwitchResponse
+from interfaces.Response import SwitchResponse
 from logger.custom_logger import custom_logger
 from utils import handle_arr_length
 

@@ -7,8 +7,8 @@ def BasicLogger(msg):
             try:
                 result = func(*args, **kwargs)
                 custom_logger.success(msg['success_msg'])
+                return result
             except BaseException:
                 custom_logger.error(msg['error_msg'])
-            return result
         return wrapper
     return decorate

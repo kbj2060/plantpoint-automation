@@ -1,71 +1,106 @@
-from interfaces.Machine import TimeRangeMachine, TemperatureRangeMachine, CycleMachine
-
-
-class LedMachine(TimeRangeMachine):
-    def __init__(self, section):
-        super().__init__(section=section)
+class LedMachine:
+    def __init__(self):
+        super().__init__()
         self.name = 'led'
 
     def __str__(self):
-        return 'TimeRangeMachine'
+        return 'RangeMachine'
 
-
-class HeaterMachine(TemperatureRangeMachine):
-    def __init__(self, section):
-        super().__init__(section=section)
-        self.name = 'heater'
-
-    def __str__(self):
-        return 'TemperatureRangeMachine'
-
-    def check_temperature(self, temperature):
-        if temperature > self.end[0]:
-            return False
-        elif temperature < self.start[0]:
-            return True
-        else:
-            return None
-
-
-class CoolerMachine(TemperatureRangeMachine):
-    def __init__(self, section):
-        super().__init__(section=section)
-        self.name = 'cooler'
-
-    def __str__(self):
-        return 'TemperatureRangeMachine'
-
-    def check_temperature(self, temperature):
-        if temperature > self.end[0]:
-            return True
-        elif temperature < self.start[0]:
-            return False
-        else:
-            return None
-
-
-class FanMachine(CycleMachine):
-    def __init__(self, section):
-        super().__init__(section=section)
+class FanMachine:
+    def __init__(self):
+        super().__init__()
         self.name = 'fan'
 
     def __str__(self):
-        return 'CycleMachine'
+        return 'IntervalMachine'
 
-
-class RoofFanMachine(CycleMachine):
-    def __init__(self, section):
-        super().__init__(section=section)
-        self.name = 'roofFan'
-
-    def __str__(self):
-        return 'CycleMachine'
-
-
-class WaterPumpMachine(CycleMachine):
-    def __init__(self, section):
-        super().__init__(section=section)
-        self.name = 'waterpump'
+class WatersprayMachine:
+    def __init__(self):
+        super().__init__()
+        self.name = 'waterspray'
 
     def __str__(self):
-        return 'CycleMachine'
+        return 'IntervalMachine'
+
+class AirConditionerMachine:
+    def __init__(self):
+        super().__init__()
+        self.name = 'airconditioner'
+
+    def __str__(self):
+        return 'TargetMachine'
+
+class PhMachine:
+    def __init__(self):
+        super().__init__()
+        self.name = 'ph'
+
+    def __str__(self):
+        return 'TargetMachine'
+
+class EcMachine:
+    def __init__(self):
+        super().__init__()
+        self.name = 'ec'
+
+    def __str__(self):
+        return 'TargetMachine'
+
+class HumidityMachine:
+    def __init__(self):
+        super().__init__()
+        self.name = 'humidity'
+
+    def __str__(self):
+        return 'TargetMachine'
+
+class Co2Machine:
+    def __init__(self):
+        super().__init__()
+        self.name = 'co2'
+
+    def __str__(self):
+        return 'TargetMachine'
+
+class WaterTemperatureMachine:
+    def __init__(self):
+        super().__init__()
+        self.name = 'water_temperature'
+
+    def __str__(self):
+        return 'TargetMachine'
+
+
+
+# class HeaterMachine(TemperatureRangeMachine):
+#     def __init__(self):
+#         super().__init__()
+#         self.name = 'heater'
+
+#     def __str__(self):
+#         return 'TemperatureRangeMachine'
+
+#     def check_temperature(self, temperature):
+#         if temperature > self.end[0]:
+#             return False
+#         elif temperature < self.start[0]:
+#             return True
+#         else:
+#             return None
+
+
+# class CoolerMachine(TemperatureRangeMachine):
+#     def __init__(self):
+#         super().__init__()
+#         self.name = 'cooler'
+
+#     def __str__(self):
+#         return 'TemperatureRangeMachine'
+
+#     def check_temperature(self, temperature):
+#         if temperature > self.end[0]:
+#             return True
+#         elif temperature < self.start[0]:
+#             return False
+#         else:
+#             return None

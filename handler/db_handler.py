@@ -1,36 +1,52 @@
 from datetime import datetime
-
-import pymysql
-from constants import GET_SECTION_SQL, GET_MACHINE_SQL, GET_AUTO_SWITCH_SQL, \
-     DB_LOGGER_MSG
+import psycopg2
+from psycopg2.extras import DictCursor
+from constants import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
 from decorator.logger_decorator import BasicLogger
-from reference.secret import DB_HOST, DB_USER, DB_PASSWORD
 from logger.custom_logger import custom_logger
 
 
 class DBHandler:
     def __init__(self):
-        self.conn = pymysql.connect(host=DB_HOST, user=DB_USER, password=DB_PASSWORD, charset='utf8')
-        self.cursor = self.conn.cursor()
+        self.conn = psycopg2.connect(
+            host=DB_HOST,
+            port=DB_PORT,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD
+        )
+        self.cursor = self.conn.cursor(cursor_factory=DictCursor)
+        custom_logger.success('Database Connected')
 
-    @BasicLogger(DB_LOGGER_MSG("Sections"))
-    def get_sections(self):
-        self.cursor.execute(GET_SECTION_SQL)
-        return self.cursor.fetchall()
+    def execute_query(self, query, params=None):
+        try:
+            self.cursor.execute(query, params)
+            self.conn.commit()
+            return self.cursor.fetchall()
+        except Exception as e:
+            self.conn.rollback()
+            custom_logger.error(f'Database error: {str(e)}')
+            raise
 
-    @BasicLogger(DB_LOGGER_MSG("Machines"))
-    def get_machines(self):
-        self.cursor.execute(GET_MACHINE_SQL)
-        return self.cursor.fetchall()
+    def get_devices(self):
+        query = """
+            SELECT id, name, status 
+            FROM device 
+            ORDER BY id
+        """
+        return self.execute_query(query)
 
-    @BasicLogger(DB_LOGGER_MSG("Last Auto Created"))
-    def get_auto_created(self, machine: str):
-        self.cursor.execute(GET_AUTO_SWITCH_SQL(machine))
-        if not self.cursor.rowcount:
-            return datetime.now()
-        else:
-            return self.cursor.fetchall()[0][0]
+    def get_automation_by_device(self, device_id):
+        query = """
+            SELECT category, settings, active 
+            FROM automations 
+            WHERE device_id = %s
+        """
+        return self.execute_query(query, (device_id,))
 
     def disconnect(self):
-        self.conn.close()
-        custom_logger.success('Database Disconnected')
+        if self.cursor:
+            self.cursor.close()
+        if self.conn:
+            self.conn.close()
+            custom_logger.success('Database Disconnected')

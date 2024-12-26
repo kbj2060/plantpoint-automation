@@ -1,67 +1,56 @@
 class BaseMachine:
-    def __init__(self, section: str):
-        self.section = section
-        self.name = ''
-        self.automation_type = ''
-        self.enable = None
-        self.status = None
-        self.mqtt_topic = ''
-        self.start = []
-        self.end = []
-        self.term = 0
+    def __init__(self, machine_id, pin, name, status=None, switch_created_at=None):
+        self.machine_id = machine_id
+        self.name = name
+        self.mqtt_topic = f'switch/{name}'
+        self.pin = pin
+        self.status = status
+        self.switch_created_at = switch_created_at
 
-    @classmethod
-    def get_properties(cls):
-        return list(vars(cls('')).keys())
+    def __str__(self) -> str:
+        """객체를 문자열로 표현할 때 사용"""
+        return f"BaseMachine({', '.join(f'{k}={v}' for k, v in self.__dict__.items())})"
+    
+    def __repr__(self) -> str:
+        """디버깅/개발용 출력"""
+        return self.__str__()
+    
+    def get_properties(self) -> dict:
+        """객체의 모든 프로퍼티를 딕셔너리로 반환"""
+        return self.__dict__
+    
+    def print_properties(self):
+        """객체의 모든 프로퍼티를 보기 좋게 출력"""
+        for key, value in self.__dict__.items():
+            print(f"{key}: {value}")
 
     def set_status(self, status):
         self.status = status
 
-    def set_mqtt(self, topic):
-        self.mqtt_topic = topic
-
-    def set_automation(self, **kw):
-        raise NotImplementedError()
-
     def check_machine_on(self):
         return self.status == 1
 
-
-class RangeMachine(BaseMachine):
-    def __init__(self, section: str):
-        super().__init__(section=section)
-
-    def set_automation(self, _type: str, enable: bool, start: list, end: list):
-        self.automation_type = _type
-        self.enable = enable
-        self.start = start
-        self.end = end
-
-
-class TemperatureRangeMachine(RangeMachine):
-    def __init__(self, section: str):
-        super().__init__(section=section)
-
-
-class TimeRangeMachine(RangeMachine):
-    def __init__(self, section: str):
-        super().__init__(section=section)
-
-
-class CycleMachine(BaseMachine):
-    def __init__(self, section: str):
-        super().__init__(section=section)
-        # self.term = 0
-
-    def set_automation(self, _type: str, enable: bool, start: list, end: list, term: int):
-        self.automation_type = _type
-        self.enable = enable
-        self.start = start
-        self.end = end
-        self.term = term
-
+    @staticmethod
+    def merge_device_data(switch_data: list, device_data: list) -> list:
+        """
+        스위치 데이터의 status와 created_at을 device_data에 추가
+        """
+        # 스위치 데이터를 device_id를 키로 하는 딕셔너리로 변환
+        switch_dict = {
+            switch['device_id']: {
+                'status': switch['status'],
+                'created_at': switch['created_at']
+            } for switch in switch_data
+        }
+        
+        # 디바이스 데이터에 status와 switch_created_at 추가
+        for device in device_data:
+            device_switch = switch_dict.get(device['id'], {'status': 0, 'created_at': None})
+            device['status'] = device_switch['status']
+            device['switch_created_at'] = device_switch['created_at']
+        
+        return device_data
 
 class Machines:
-    def __init__(self, m_section: str, machines: list):
+    def __init__(self, machines: list):
         self.machines = machines
-        self.section = m_section
