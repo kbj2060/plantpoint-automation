@@ -115,18 +115,28 @@ class BaseAutomation(ABC):
         self.mqtt_topic = f"switch/{self.name}"
         self.switch_created_at = machine.switch_created_at
 
+    def get_machine(self) -> BaseMachine:
+        """현재 상태의 BaseMachine 객체 생성"""
+        return BaseMachine(
+            machine_id=self.device_id,
+            name=self.name,
+            pin=self.pin,
+            status=self.status,
+            switch_created_at=self.switch_created_at
+        )
+
     @abstractmethod
     def _init_from_settings(self, settings: dict) -> None:
         """각 자동화 타입별 설정 초기화"""
         pass
 
     @abstractmethod
-    def control(self) -> bool:
+    def control(self) -> Optional[BaseMachine]:
         """자동화 로직 실행"""
         if not self.active:
             custom_logger.info(f"Device {self.name}: 자동화가 비활성화되어 있습니다.")
-            return False
-        return True
+            return None
+        return self.get_machine()  # BaseMachine 객체 반환
 
     @staticmethod
     def create_automation(automation_data: dict, store: 'Store') -> 'BaseAutomation':
@@ -183,10 +193,10 @@ class RangeAutomation(BaseAutomation):
             return current_time >= self.start or current_time <= self.end
         return self.start <= current_time <= self.end  # 일반적인 경우
 
-    def control(self) -> bool:
+    def control(self) -> Optional[BaseMachine]:
         """시간 기반 제어 실행"""
         if not super().control():
-            return False
+            return None
 
         if not all([self.start, self.end, self.pin]):
             custom_logger.error(f"Device {self.name}: 필수 설정이 누락되었습니다.")
@@ -200,7 +210,7 @@ class RangeAutomation(BaseAutomation):
             if should_be_on != current_status:
                 self.update_device_status(should_be_on)
                 
-            return True
+            return self.get_machine()
 
         except Exception as e:
             custom_logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
@@ -233,10 +243,10 @@ class IntervalAutomation(BaseAutomation):
             last_toggle_time=parse_datetime(settings.get('last_toggle_time'))
         )
 
-    def control(self) -> bool:
+    def control(self) -> Optional[BaseMachine]:
         """주기적 제어 실행 (5분마다 호출됨)"""
         if not super().control():
-            return False
+            return None
 
         if not all([self.duration, self.interval, self.pin]):
             custom_logger.error(f"Device {self.name}: 필수 설정이 누락되었습니다.")
@@ -252,19 +262,19 @@ class IntervalAutomation(BaseAutomation):
                 self.state.start_new_cycle(now)
                 if not current_status:
                     self.update_device_status(True)
-                return True
+                return self.get_machine()
 
             # 주기 진행 중
             if elapsed_since_start < self.duration:
                 if elapsed_since_toggle >= self.interval:
                     self.state.update_toggle_time(now)
                     self.update_device_status(not current_status)
-                return True
+                return self.get_machine()
 
             # 주기 종료
             if current_status:
                 self.update_device_status(False)
-            return True
+            return self.get_machine()
 
         except Exception as e:
             custom_logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
@@ -289,10 +299,10 @@ class TargetAutomation(BaseAutomation):
             self.sensor_name = self.name
             custom_logger.warning("Target 자동화 설정이 비어있습니다.")
 
-    def control(self) -> bool:
+    def control(self) -> Optional[BaseMachine]:
         """목표값 기반 제어 실행"""
         if not super().control():
-            return False
+            return None
 
         if not all([self.target is not None, self.margin is not None, self.pin, self.name]):
             custom_logger.error(f"Device {self.name}: 필수 설정이 누락되었습니다.")
@@ -304,7 +314,7 @@ class TargetAutomation(BaseAutomation):
         current_value = self.get_sensor_value(self.sensor_name)
         if current_value is None:
             custom_logger.warning(f"Device {self.name}: Redis에서 센서({self.sensor_name}) 값을 찾을 수 없습니다.")
-            return False
+            return None
 
         try:
             current_status = bool(self.status)
@@ -312,8 +322,6 @@ class TargetAutomation(BaseAutomation):
             
             # 목표값과의 차이가 허용 오차를 벗어난 경우
             if value_difference > self.margin:
-                # 현재값이 (목표값 - 오차범위) 보다 작으면 켜기
-                # 현재값이 (목표값 + 오차범위) 보다 크면 끄기
                 should_be_on = current_value < (self.target - self.margin)
                 
                 if should_be_on != current_status:
@@ -324,7 +332,7 @@ class TargetAutomation(BaseAutomation):
                         f"목표값({self.target}) 오차범위({self.target - self.margin} ~ {self.target + self.margin})"
                     )
             
-            return True
+            return self.get_machine()
 
         except Exception as e:
             custom_logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")

@@ -1,5 +1,5 @@
 class BaseMachine:
-    def __init__(self, machine_id, pin, name, status=None, switch_created_at=None):
+    def __init__(self, machine_id=None, pin=None, name=None, status=None, switch_created_at=None):
         self.machine_id = machine_id
         self.name = name
         self.mqtt_topic = f'switch/{name}'
