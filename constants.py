@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import os
 
 # .env 파일 로드
-load_dotenv()
+load_dotenv('.env.development')
 
 # 환경 변수 사용
 USERNAME = os.getenv('USERNAME')
@@ -38,7 +38,7 @@ SIGNIN_URL = f'{BACKEND_ADDRESS}/authentication/signin'
 ENVIRONMENT_EACH_LATEST_READ_URL = f'{BACKEND_ADDRESS}/environment/each-latest'
 ENVIRONMENT_TYPE_READ_URL = f'{BACKEND_ADDRESS}/environment/types'
 
-AUTOMATED_SWITCH_READ_URL = f'{BACKEND_ADDRESS}/switches/automated-switches'
+INTERVAL_DEVICE_STATES_READ_URL = f'{BACKEND_ADDRESS}/switches/interval-states'
 SWITCH_EACH_LATEST_READ_URL = f'{BACKEND_ADDRESS}/switches/each-latest'
 SWITCH_CREATE_URL = f'{BACKEND_ADDRESS}/switches/create'
 
@@ -50,7 +50,7 @@ ON = 1
 OFF = 0
 
 NAME = "Auto"
-
+TREAD_DURATION_LIMIT=60
 
 SEND_SWITCH_TO_SERVER = 'sendSwitchToServer'
 SEND_SWITCH_TO_CLIENT = 'sendSwitchToClient'

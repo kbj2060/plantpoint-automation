@@ -9,10 +9,12 @@ class MQTTClient:
         self.client = mqtt.Client(client_id=MQTT_ID)
         self.client.on_connect = self.on_connect
         self.client.on_disconnect = self.on_disconnect
+        self.client.on_message = self.on_message
         
         try:
             self.client.connect(MQTT_HOST, int(MQTT_PORT))
             self.client.loop_start()
+            custom_logger.info("MQTT 클라이언트 초기화 중...")
         except Exception as e:
             custom_logger.error(f"MQTT 연결 실패: {str(e)}")
             raise
@@ -20,8 +22,21 @@ class MQTTClient:
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
             custom_logger.success("MQTT 브로커 연결 성공")
+            self.client.subscribe("environment/#")
+            self.client.subscribe("automation/#")
+            self.client.subscribe("current/#")
+            custom_logger.info("MQTT 토픽 구독: environment/#, automation/#, current/#")
         else:
             custom_logger.error(f"MQTT 브로커 연결 실패 (code: {rc})")
+
+    def on_message(self, client, userdata, message):
+        """기본 메시지 핸들러"""
+        try:
+            topic = message.topic
+            payload = json.loads(message.payload.decode())
+            custom_logger.debug(f"MQTT 메시지 수신: {topic} = {payload}")
+        except Exception as e:
+            custom_logger.error(f"MQTT 메시지 처리 실패: {str(e)}")
 
     def on_disconnect(self, client, userdata, rc):
         if rc != 0:
@@ -51,7 +66,11 @@ class MQTTClient:
 
     def disconnect(self):
         """MQTT 브로커 연결 종료"""
-        self.client.loop_stop()
-        self.client.disconnect() 
+        try:
+            self.client.loop_stop()
+            self.client.disconnect()
+            custom_logger.success("MQTT 클라이언트 종료")
+        except Exception as e:
+            custom_logger.error(f"MQTT 연결 종료 실패: {str(e)}") 
 
 

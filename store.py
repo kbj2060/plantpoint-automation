@@ -11,7 +11,8 @@ from interfaces.Response import (
     SensorResponse, 
     SwitchResponse
 )
-from resources import http
+from resources import http, redis
+from utils import custom_logger
 
 
 @dataclass
@@ -39,50 +40,56 @@ class DeviceTimeState:
 
 class Store:
     def __init__(self):
-        self.environment_types: List[EnvironmentTypeResponse] = http.get_environment_types()
-        self.environments: List[EnvironmentResponse] = http.get_environments()
-        self.switches: List[SwitchResponse] = http.get_switches()
-        self.machines: List[MachineResponse] = http.get_machines()
-        self.sensors: List[SensorResponse] = http.get_sensors()
-        self.automations: List[AutomationResponse] = http.get_automations()
-        self.automated_switches: List[AutomationSwitchResponse] = http.get_automated_switches()
-        
-        self.automation_states: Dict[str, Dict] = self._process_automated_switches()
+        try:
+            # HTTP에서 데이터 가져오기
+            self.environment_types: List[EnvironmentTypeResponse] = http.get_environment_types()
+            self.environments: List[EnvironmentResponse] = http.get_environments()
+            self.switches: List[SwitchResponse] = http.get_switches()
+            self.machines: List[MachineResponse] = http.get_machines()
+            self.sensors: List[SensorResponse] = http.get_sensors()
+            self.automations: List[AutomationResponse] = http.get_automations()
+            self.interval_automated_switches: List[AutomationSwitchResponse] = http.get_interval_device_states()
+
+            print(self.interval_automated_switches)
+            
+            custom_logger.info(f"Store 데이터 로드 완료:")
+            custom_logger.info(f"- Machines: {len(self.machines)}")
+            custom_logger.info(f"- Automations: {len(self.automations)}")
+            
+            self._update_machines()
+
+            # Redis에 데이터 저장
+            self._save_to_redis()
+
+        except Exception as e:
+            custom_logger.error(f"Store 초기화 실패: {str(e)}")
+            raise
+
+    def _save_to_redis(self) -> None:
+        """데이터를 Redis에 저장"""
+        try:
+            # 각 데이터 타입별로 저장
+            redis.set('environment_types', self.environment_types)
+            redis.set('environments', self.environments)
+            redis.set('switches', self.switches)
+            redis.set('machines', self.machines)
+            redis.set('sensors', self.sensors)
+            redis.set('automations', self.automations)
+            redis.set('interval_automated_switches', self.interval_automated_switches)
+
+            custom_logger.info("Redis에 데이터 저장 완료")
+
+        except Exception as e:
+            custom_logger.error(f"Redis 데이터 저장 실패: {str(e)}")
+            raise
 
     def _parse_datetime(self, date_str: str) -> datetime:
         """ISO 형식의 문자열을 datetime으로 변환"""
         return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
 
-    def _process_automated_switches(self) -> Dict[str, Dict]:
-        """자동화된 스위치 데이터를 디바이스별 상태 정보로 변환"""
-        device_times: Dict[str, DeviceTimeState] = {}
-        
-        # 스위치 데이터 처리
-        for switch in self.automated_switches:
-            device_name = switch['name']
-            if device_name not in device_times:
-                device_times[device_name] = DeviceTimeState()
-            
-            created_at = self._parse_datetime(switch['created_at'])
-            device_times[device_name].update_time(created_at, switch['status'])
-        
-        # DeviceTimeState 객체를 딕셔너리로 변환
-        return {
-            name: time_state.to_dict() 
-            for name, time_state in device_times.items()
-        }
-
-    def get_automation_state(self, device_name: str) -> dict:
-        """특정 디바이스의 자동화 상태 정보 반환"""
-        state = self.automation_states.get(device_name, {})
-        return {
-            'last_start_time': state.get('last_start_time').isoformat() if state.get('last_start_time') else None,
-            'last_toggle_time': state.get('last_toggle_time').isoformat() if state.get('last_toggle_time') else None
-        }
-
-    def update_machines(self, switch_data: list, device_data: list) -> None:
+    def _update_machines(self) -> None:
         """기기 정보 업데이트"""
-        merged_data = BaseMachine.merge_device_data(switch_data, device_data)
+        merged_data = BaseMachine.merge_device_data(self.switches, self.machines)
         
         self.machines = [
             BaseMachine(

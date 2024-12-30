@@ -11,4 +11,4 @@ class MQTTPayload(TypedDict):
 
 class WSPayload(TypedDict):
     event: Literal['sendSwitchToServer']
-    data: dict[str, Literal[0, 1]]
+    data: dict[str, bool | str]

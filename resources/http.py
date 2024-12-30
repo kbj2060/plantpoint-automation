@@ -1,7 +1,7 @@
 import requests
 from logger.custom_logger import custom_logger
 from constants import (
-    AUTOMATED_SWITCH_READ_URL, SIGNIN_URL, AUTOMATION_READ_URL, ENVIRONMENT_EACH_LATEST_READ_URL,
+    INTERVAL_DEVICE_STATES_READ_URL, SIGNIN_URL, AUTOMATION_READ_URL, ENVIRONMENT_EACH_LATEST_READ_URL,
     ENVIRONMENT_TYPE_READ_URL, SWITCH_EACH_LATEST_READ_URL, MACHINE_READ_URL,
     SENSOR_READ_URL, USERNAME, PASSWORD
 )
@@ -34,8 +34,8 @@ class HTTP:
     def get_automations(self) -> list:
         return self._get_request(AUTOMATION_READ_URL)
     
-    def get_automated_switches(self) -> list:
-        return self._get_request(AUTOMATED_SWITCH_READ_URL)
+    def get_interval_device_states(self) -> list:
+        return self._get_request(INTERVAL_DEVICE_STATES_READ_URL)
 
     def get_environments(self) -> list:
         return self._get_request(ENVIRONMENT_EACH_LATEST_READ_URL)

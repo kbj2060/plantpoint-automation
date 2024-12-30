@@ -1,27 +1,39 @@
-art==5.1
-bidict==0.21.2
-certifi==2020.12.5
-chardet==4.0.0
-gevent==21.1.2
-greenlet==1.0.0
-idna==2.10
-loguru==0.5.3
-numpy==1.20.1
+# MQTT 관련
 paho-mqtt==1.5.1
-pandas==1.2.3
-PyMySQL==0.10.1
-python-dateutil==2.8.1
-python-engineio==4.11.0
-python-engineio-client==1.1
+
+# 웹소켓 관련
 python-socketio==5.10.0
 python-socketio-client==1.1
+python-engineio==4.11.0
+python-engineio-client==1.1
+websocket-client==1.6.1
+
+# 시간 처리 관련
+python-dateutil==2.8.1
 pytz==2021.1
+
+# HTTP 요청 관련
 requests==2.25.1
+urllib3==1.26.2
+certifi==2020.12.5
+chardet==4.0.0
+idna==2.10
+
+# 로깅 관련
+loguru==0.5.3
+structlog==24.4.0
+
+# 데이터베이스 관련
+psycopg2-binary==2.9.9
+
+# 유틸리티
+python-dotenv==1.0.0
 six==1.15.0
 tabulate==0.8.9
-urllib3==1.26.2
+
+# 비동기/이벤트 처리
+gevent==21.1.2
+greenlet==1.0.0
+bidict==0.21.2
 zope.event==4.5.0
 zope.interface==5.2.0
-python-dotenv==1.0.0
-websocket-client==1.6.1
-psycopg2-binary==2.9.9

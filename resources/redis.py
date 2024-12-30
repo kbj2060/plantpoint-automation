@@ -1,3 +1,4 @@
+import json
 import redis
 from logger.custom_logger import custom_logger
 from constants import REDIS_HOST, REDIS_PORT
@@ -37,7 +38,7 @@ class RedisClient:
             self.client.set(key, value)
             if expire:
                 self.client.expire(key, expire)
-            custom_logger.info(f"Redis set 성공: {key}={value}")
+            custom_logger.info(f"Redis set 성공: {key}")
             return True
         except Exception as e:
             custom_logger.error(f"Redis set 실패: {str(e)}")
@@ -65,10 +66,10 @@ redis_client = RedisClient()
 
 # 편의를 위한 함수들
 def get(key: str) -> str:
-    return redis_client.get(key)
+    return json.loads(redis_client.get(key))
 
 def set(key: str, value: str, expire: int = None) -> bool:
-    return redis_client.set(key, value, expire)
+    return redis_client.set(key, json.dumps(value, default=str), expire)
 
 def delete(key: str) -> bool:
     return redis_client.delete(key)
