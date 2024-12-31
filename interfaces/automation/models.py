@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Tuple, Dict, Any, Union
+from typing import Optional, Tuple, Dict, Any, Union, Callable
 from enum import Enum
 
 @dataclass
@@ -45,9 +45,19 @@ class IntervalState:
 
 class TopicType(Enum):
     """MQTT 토픽 타입"""
-    ENVIRONMENT = "environment"
+    AUTOMATION = "automation"
     CURRENT = "current"
     SWITCH = "switch"
+    ENVIRONMENT = "environment"
+    
+    @classmethod
+    def from_topic(cls, topic: str) -> Optional['TopicType']:
+        """토픽 문자열에서 TopicType 생성"""
+        topic_type = topic.split('/')[0]
+        try:
+            return cls(topic_type)
+        except ValueError:
+            return None
 
 @dataclass
 class SensorData:
@@ -202,3 +212,10 @@ class WebSocketMessage:
             'event': self.event,
             'data': self.data
         } 
+
+@dataclass
+class MessageHandler:
+    """메시지 핸들러 설정"""
+    topic_type: TopicType
+    handler: Callable
+    description: str 

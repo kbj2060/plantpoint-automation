@@ -3,6 +3,7 @@ from typing import Optional
 from interfaces.automation.base import BaseAutomation
 from interfaces.Machine import BaseMachine
 from logger.custom_logger import custom_logger
+from interfaces.automation.models import MQTTMessage, TopicType
 
 class RangeAutomation(BaseAutomation):
     def _init_from_settings(self, settings: dict) -> None:
@@ -44,3 +45,31 @@ class RangeAutomation(BaseAutomation):
         except Exception as e:
             custom_logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
             raise 
+
+    def _on_mqtt_message(self, client, userdata, message) -> None:
+        """MQTT 메시지 수신 처리 (Range 자동화)"""
+        try:
+            if not self.active:
+                custom_logger.warning(f"Device {self.name}: 비활성화되어 메시지 처리 건너뜀")
+                return
+            
+            # MQTT 메시지를 객체로 변환
+            mqtt_message = MQTTMessage.from_message(message)
+            topic_type = TopicType.from_topic(mqtt_message.topic)
+            
+            if not topic_type:
+                custom_logger.warning(f"알 수 없는 토픽: {mqtt_message.topic}")
+                return
+            
+            # automation, current 토픽만 처리
+            if topic_type in [TopicType.AUTOMATION, TopicType.CURRENT]:
+                handler = self.message_handlers.get(topic_type)
+                if handler:
+                    custom_logger.debug(
+                        f"메시지 핸들러 실행: {handler.description} "
+                        f"(토픽: {topic_type.value})"
+                    )
+                    handler.handler(mqtt_message)
+                
+        except Exception as e:
+            custom_logger.error(f"MQTT 메시지 처리 실패: {str(e)}") 

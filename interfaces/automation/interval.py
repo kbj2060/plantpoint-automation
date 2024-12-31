@@ -4,7 +4,7 @@ from threading import Timer
 from interfaces.automation.base import BaseAutomation
 from interfaces.Machine import BaseMachine
 from logger.custom_logger import custom_logger
-from interfaces.automation.models import TimeConfig, MQTTMessage, TopicType
+from interfaces.automation.models import TimeConfig, MQTTMessage, TopicType, MQTTPayloadData, SwitchMessage
 from resources import redis
 from constants import TREAD_DURATION_LIMIT
 
@@ -136,24 +136,30 @@ class IntervalAutomation(BaseAutomation):
             raise
 
     def _on_mqtt_message(self, client, userdata, message) -> None:
-        """MQTT 메시지 수신 처리"""
+        """MQTT 메시지 수신 처리 (Interval 자동화)"""
         try:
-            # 부모 클래스의 메시지 처리
-            super()._on_mqtt_message(client, userdata, message)
+            if not self.active:
+                custom_logger.warning(f"Device {self.name}: 비활성화되어 메시지 처리 건너뜀")
+                return
             
             # MQTT 메시지를 객체로 변환
             mqtt_message = MQTTMessage.from_message(message)
+            topic_type = TopicType.from_topic(mqtt_message.topic)
             
-            # 자동화 설정 변경 메시지인 경우
-            if (mqtt_message.topic_type == TopicType.AUTOMATION and 
-                mqtt_message.to_automation_data() and 
-                mqtt_message.to_automation_data().device_id == self.device_id):
-                try:
-                    # 새로운 설정으로 업데이트
-                    self.update_settings(mqtt_message.to_automation_data().settings)
-                except Exception as e:
-                    custom_logger.error(f"자동화 설정 업데이트 중 오류 발생: {str(e)}")
-                    
+            if not topic_type:
+                custom_logger.warning(f"알 수 없는 토픽: {mqtt_message.topic}")
+                return
+            
+            # automation, current 토픽만 처리
+            if topic_type in [TopicType.AUTOMATION, TopicType.CURRENT]:
+                handler = self.message_handlers.get(topic_type)
+                if handler:
+                    custom_logger.debug(
+                        f"메시지 핸들러 실행: {handler.description} "
+                        f"(토픽: {topic_type.value})"
+                    )
+                    handler.handler(mqtt_message)
+                
         except Exception as e:
             custom_logger.error(f"MQTT 메시지 처리 실패: {str(e)}")
 

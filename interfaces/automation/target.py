@@ -2,10 +2,20 @@ from typing import Optional
 from interfaces.automation.base import BaseAutomation
 from interfaces.Machine import BaseMachine
 from logger.custom_logger import custom_logger
-from interfaces.automation.models import MQTTMessage, MQTTPayloadData, SwitchMessage
+from interfaces.automation.models import MQTTMessage, MQTTPayloadData, MessageHandler, SwitchMessage, TopicType
 from resources import redis
 
 class TargetAutomation(BaseAutomation):
+    def __init__(self, device_id: str, category: str, active: bool, settings: dict, updated_at: str = None):
+        super().__init__(device_id, category, active, settings, updated_at)
+        
+        # Target 자동화는 environment 토픽도 처리
+        self.message_handlers[TopicType.ENVIRONMENT] = MessageHandler(
+            topic_type=TopicType.ENVIRONMENT,
+            handler=self._handle_environment_message,
+            description="환경 센서값 메시지 처리"
+        )
+
     def _init_from_settings(self, settings: dict) -> None:
         """Target 자동화 설정 초기화"""
         try:
@@ -120,37 +130,24 @@ class TargetAutomation(BaseAutomation):
                 custom_logger.warning(f"Device {self.name}: 비활성화되어 메시지 처리 건너뜀")
                 return
         
-            # 부모 클래스의 메시지 처리 (전류값 처리)
-            super()._on_mqtt_message(client, userdata, message)
-                
-            # MQTT 메시지를 MQTTPayloadData 객체로 변환
+            # MQTT 메시지를 객체로 변환
             mqtt_message = MQTTMessage.from_message(message)
-            payload_data = MQTTPayloadData(
-                pattern=mqtt_message.topic,
-                data=SwitchMessage(
-                    name=mqtt_message.topic_parts[1],  # topic의 두 번째 부분이 name
-                    value=mqtt_message.payload['data']['value']
-                )
-            )
-
-            print(payload_data.data.name, self.name)
-            if payload_data.data.name == self.name:  # 해당 센서의 데이터인지 확인
-                self.value = float(payload_data.data.value)
-                custom_logger.info(
-                    f"센서값 수신: {payload_data.data.name} = {self.value} "
-                    f"(패턴: {payload_data.pattern})"
-                )
+            topic_type = TopicType.from_topic(mqtt_message.topic)
+            
+            if not topic_type:
+                custom_logger.warning(f"알 수 없는 토픽: {mqtt_message.topic}")
+                return
+            
+            # automation, current, environment 토픽만 처리
+            if topic_type in [TopicType.AUTOMATION, TopicType.CURRENT, TopicType.ENVIRONMENT]:
+                handler = self.message_handlers.get(topic_type)
+                if handler:
+                    custom_logger.debug(
+                        f"메시지 핸들러 실행: {handler.description} "
+                        f"(토픽: {topic_type.value})"
+                    )
+                    handler.handler(mqtt_message)
                 
-                try:
-                    controlled_machine = self.control()
-                    if controlled_machine:
-                        custom_logger.info(
-                            f"자동화 실행 성공: {self.name} "
-                            f"(현재값: {self.value}, 상태: {self.status})"
-                        )
-                except Exception as e:
-                    custom_logger.error(f"자동화 실행 중 오류 발생: {str(e)}")
-                    
         except Exception as e:
             custom_logger.error(f"MQTT 메시지 처리 실패: {str(e)}") 
 
@@ -175,3 +172,37 @@ class TargetAutomation(BaseAutomation):
         except Exception as e:
             custom_logger.error(f"센서값 조회 실패: {str(e)}")
             return None 
+
+    def _handle_environment_message(self, mqtt_message: MQTTMessage) -> None:
+        """환경 센서값 메시지 처리 (Target 자동화)"""
+        try:
+            payload_data = MQTTPayloadData(
+                pattern=mqtt_message.topic,
+                data=SwitchMessage(
+                    name=mqtt_message.topic_parts[1],
+                    value=mqtt_message.payload['data']['value']
+                )
+            )
+
+            if payload_data.data.name == self.name:
+                self.value = float(payload_data.data.value)
+                redis_key = f"environment/{self.name}"
+                redis.set(redis_key, str(self.value))
+                
+                custom_logger.info(
+                    f"Device {self.name}: 환경 센서값 수신 "
+                    f"(값: {self.value})"
+                )
+                
+                try:
+                    controlled_machine = self.control()
+                    if controlled_machine:
+                        custom_logger.info(
+                            f"자동화 실행 성공: {self.name} "
+                            f"(현재값: {self.value}, 상태: {self.status})"
+                        )
+                except Exception as e:
+                    custom_logger.error(f"자동화 실행 중 오류 발생: {str(e)}")
+
+        except Exception as e:
+            custom_logger.error(f"환경 센서값 메시지 처리 실패: {str(e)}") 
