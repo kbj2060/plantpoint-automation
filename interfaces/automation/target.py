@@ -2,7 +2,7 @@ from typing import Optional
 from interfaces.automation.base import BaseAutomation
 from interfaces.Machine import BaseMachine
 from logger.custom_logger import custom_logger
-from interfaces.automation.models import MQTTMessage
+from interfaces.automation.models import MQTTMessage, MQTTPayloadData, SwitchMessage
 from resources import redis
 
 class TargetAutomation(BaseAutomation):
@@ -123,16 +123,22 @@ class TargetAutomation(BaseAutomation):
             # 부모 클래스의 메시지 처리 (전류값 처리)
             super()._on_mqtt_message(client, userdata, message)
                 
-            # MQTT 메시지를 객체로 변환
+            # MQTT 메시지를 MQTTPayloadData 객체로 변환
             mqtt_message = MQTTMessage.from_message(message)
-            sensor_data = mqtt_message.to_sensor_data()
-            
-            if sensor_data:  # 해당 센서의 데이터인지 확인
-                self.value = sensor_data.value
+            payload_data = MQTTPayloadData(
+                pattern=mqtt_message.topic,
+                data=SwitchMessage(
+                    name=mqtt_message.topic_parts[1],  # topic의 두 번째 부분이 name
+                    value=mqtt_message.payload['data']['value']
+                )
+            )
 
+            print(payload_data.data.name, self.name)
+            if payload_data.data.name == self.name:  # 해당 센서의 데이터인지 확인
+                self.value = float(payload_data.data.value)
                 custom_logger.info(
-                    f"센서값 수신: {sensor_data.name} = {sensor_data.value} "
-                    f"({sensor_data.topic_type.value})"
+                    f"센서값 수신: {payload_data.data.name} = {self.value} "
+                    f"(패턴: {payload_data.pattern})"
                 )
                 
                 try:
@@ -140,7 +146,7 @@ class TargetAutomation(BaseAutomation):
                     if controlled_machine:
                         custom_logger.info(
                             f"자동화 실행 성공: {self.name} "
-                            f"(현재값: {sensor_data.value}, 상태: {self.status})"
+                            f"(현재값: {self.value}, 상태: {self.status})"
                         )
                 except Exception as e:
                     custom_logger.error(f"자동화 실행 중 오류 발생: {str(e)}")
