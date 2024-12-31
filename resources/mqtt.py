@@ -21,7 +21,7 @@ class MQTTClient:
 
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
-            custom_logger.success("MQTT 브로커 연결 성공")
+            custom_logger.info("MQTT 브로커 연결 성공")
             self.client.subscribe("environment/#")
             self.client.subscribe("automation/#")
             self.client.subscribe("current/#")
@@ -42,7 +42,7 @@ class MQTTClient:
         if rc != 0:
             custom_logger.warning("MQTT 브로커 연결이 예기치 않게 종료됨")
         else:
-            custom_logger.success("MQTT 브로커 연결 종료")
+            custom_logger.info("MQTT 브로커 연결 종료")
 
     def publish_message(self, topic: str, payload: dict) -> bool:
         """
@@ -69,7 +69,7 @@ class MQTTClient:
         try:
             self.client.loop_stop()
             self.client.disconnect()
-            custom_logger.success("MQTT 클라이언트 종료")
+            custom_logger.info("MQTT 클라이언트 종료")
         except Exception as e:
             custom_logger.error(f"MQTT 연결 종료 실패: {str(e)}") 
 

@@ -16,7 +16,7 @@ def create_automation_thread(automation: BaseAutomation) -> threading.Thread:
             while True:
                 controlled_machine = automation.control()
                 if controlled_machine:
-                    custom_logger.success(f"자동화 실행 성공: {automation.name}")
+                    custom_logger.info(f"자동화 실행 성공: {automation.name}")
                 else:
                     custom_logger.debug(f"자동화 대기 중: {automation.name}")
                 threading.Event().wait(60)  # 1분마다 백업 체크
@@ -64,7 +64,7 @@ def start_automation_threads(store: Store) -> List[threading.Thread]:
                 thread.start()
                 threads.append(thread)
                 
-                custom_logger.success(
+                custom_logger.info(
                     f"자동화 스레드 시작: {automation.name} "
                     f"(category: {automation.category})"
                 )
@@ -88,10 +88,10 @@ def main():
         
         # MQTT 초기화
         mqtt.client.loop_start()
-        custom_logger.success("MQTT 브로커 연결 완료")
+        custom_logger.info("MQTT 브로커 연결 완료")
         
         # Redis 초기화
-        custom_logger.success("Redis 연결 완료")
+        custom_logger.info("Redis 연결 완료")
         
         # 3. Store 초기화
         store = Store()
@@ -108,7 +108,7 @@ def main():
             custom_logger.warning("실행 중인 자동화 스레드가 없습니다.")
             return
             
-        custom_logger.success(f"자동화 스레드 {len(threads)}개 시작 완료")
+        custom_logger.info(f"자동화 스레드 {len(threads)}개 시작 완료")
         
         # 5. 메인 루프
         previous_threads = set(threads)

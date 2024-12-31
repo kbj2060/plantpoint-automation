@@ -31,14 +31,14 @@ class WebSocket:
 
     def _on_open(self, ws):
         self.connected = True
-        custom_logger.success("WebSocket 연결 성공!")
+        custom_logger.info("WebSocket 연결 성공!")
 
     def _on_error(self, ws, error):
         custom_logger.error(f"WebSocket 오류: {error}")
 
     def _on_close(self, ws, close_status_code, close_msg):
         self.connected = False
-        custom_logger.success("WebSocket 연결 종료!")
+        custom_logger.info("WebSocket 연결 종료!")
 
     def _wait_for_connection(self, timeout=5):
         """연결 상태를 확인하며 대기"""

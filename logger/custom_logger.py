@@ -1,59 +1,72 @@
-from datetime import datetime, timezone, timedelta
-from loguru import logger
 import sys
+import logging
+import structlog
+from datetime import datetime, timezone, timedelta
 
-KST = timezone(timedelta(hours=9))
-korean_time = datetime.now(tz=KST)
+# ANSI 색상 코드
+COLORS = {
+    'grey': '\033[38;5;240m',
+    'red': '\033[31m',
+    'green': '\033[32m',
+    'yellow': '\033[33m',
+    'blue': '\033[34m',
+    'magenta': '\033[35m',
+    'cyan': '\033[36m',
+    'white': '\033[37m',
+    'reset': '\033[0m'
+}
 
-banner_level = logger.level("BANNER", no=10, color="<fg #d9d8d2>")
-switch_level = logger.level("SWITCH", no=11, color="<fg #cf1578>")
-stay_level = logger.level("STAY", no=13, color="<fg #a2d5c6>")
-disabled_level = logger.level("DISABLED", no=14, color="<fg #e8d21d>")
+# 로그 레벨별 색상
+LEVEL_COLORS = {
+    'debug': COLORS['grey'],
+    'info': COLORS['green'],
+    'warning': COLORS['yellow'],
+    'error': COLORS['red'],
+    'critical': COLORS['red']
+}
 
-# # 파일 로깅 설정 유지
-# logger.add(f".logs/{korean_time}.log",
-#           colorize=True,
-#           rotation="12:00",
-#           retention="1 days",
-#           compression="zip",
-#           format="{time:YYYY-MM-DD at HH:mm:ss} | {level:8} | {message}",
-#           enqueue=True)
-
-# 일반 로그 포맷 (파일 위치 없음)
-default_format = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>"
-
-# 오류 로그 포맷 (파일 위치 포함)
-error_format = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
-
-# 기본 핸들러 제거
-logger.remove()
-
-# 일반 로그용 핸들러 추가 (INFO, SUCCESS 등)
-logger.add(
-    sys.stdout,
-    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>",
-    filter=lambda record: record["level"].name not in ["ERROR", "CRITICAL"],
-    colorize=True
+# 로깅 기본 설정
+logging.basicConfig(
+    format="%(message)s",
+    stream=sys.stdout,
+    level=logging.INFO,
 )
 
-# 오류 로그용 핸들러 추가 (ERROR, CRITICAL)
-logger.add(
-    sys.stdout,
-    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <red>{name}</red>:<red>{function}</red>:<red>{line}</red> | <level>{message}</level>",
-    filter=lambda record: record["level"].name in ["ERROR", "CRITICAL"],
-    colorize=True,
-    backtrace=True,
-    diagnose=True
+def add_timestamp(logger, method_name, event_dict):
+    """타임스탬프 추가"""
+    KST = timezone(timedelta(hours=9))
+    event_dict["timestamp"] = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
+    return event_dict
+
+def console_formatter(logger, method_name, event_dict):
+    """콘솔 출력 형식 지정 (색상 포함)"""
+    timestamp = event_dict.pop("timestamp", "")
+    level = event_dict.pop("level", method_name).upper()
+    event = event_dict.pop("event", "")
+    
+    # 나머지 키워드 인자들을 문자열로 변환
+    extra = " ".join(f"{k}={v}" for k, v in event_dict.items())
+    
+    # 로그 레벨에 따른 색상 적용
+    level_color = LEVEL_COLORS.get(method_name.lower(), COLORS['white'])
+    
+    return (
+        f"{COLORS['cyan']}{timestamp}{COLORS['reset']} | "
+        f"{level_color}{level:8}{COLORS['reset']} | "
+        f"{COLORS['white']}{event} {extra}{COLORS['reset']}"
+    )
+
+# structlog 설정
+structlog.configure(
+    processors=[
+        add_timestamp,
+        structlog.stdlib.add_log_level,
+        structlog.processors.format_exc_info,
+        console_formatter,
+    ],
+    logger_factory=structlog.PrintLoggerFactory(),
+    cache_logger_on_first_use=True,
 )
 
-# 파일 로깅 설정
-logger.add(
-    f".logs/{korean_time}.log",
-    format="{time:YYYY-MM-DD HH:mm:ss} | {level:<8} | {name}:{function}:{line} | {message}",
-    rotation="12:00",
-    retention="1 days",
-    compression="zip",
-    enqueue=True
-)
-
-custom_logger = logger
+# 로거 인스턴스 생성
+custom_logger = structlog.get_logger()
