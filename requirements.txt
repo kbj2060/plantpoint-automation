@@ -20,7 +20,6 @@ chardet==4.0.0
 idna==2.10
 
 # 로깅 관련
-loguru==0.5.3
 structlog==24.4.0
 
 # 데이터베이스 관련
