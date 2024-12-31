@@ -13,7 +13,7 @@ class RedisClient:
             )
             # 연결 테스트
             self.client.ping()
-            custom_logger.success("Redis 연결 성공")
+            custom_logger.info("Redis 연결 성공")
         except redis.ConnectionError as e:
             custom_logger.error(f"Redis 연결 실패: {str(e)}")
             raise
@@ -56,7 +56,7 @@ class RedisClient:
         """Redis 연결 종료"""
         try:
             self.client.close()
-            custom_logger.success("Redis 연결 종료")
+            custom_logger.info("Redis 연결 종료")
         except Exception as e:
             custom_logger.error(f"Redis 연결 종료 실패: {str(e)}")
 
