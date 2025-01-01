@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Dict
-from logger.custom_logger import custom_logger
+from logger.custom_logger import CustomLogger
 from interfaces.Machine import BaseMachine
 from resources import mqtt, ws, redis
 from constants import SWITCH_SOCKET_ADDRESS, WS_SWITCH_EVENT
@@ -26,9 +26,11 @@ class BaseAutomation(ABC):
         self.switch_created_at: Optional[str] = None
         self.mqtt_subscribed = False
         self.sensor_name: Optional[str] = None
-        self._init_from_settings(settings)
-
-        # 기본 메시지 핸들러 등록 (automation, current는 모든 자동화에서 공통)
+        
+        # 임시 로거 생성 (초기화 단계용)
+        self.logger = CustomLogger()
+        
+        # 기본 메시지 핸들러 등록
         self.message_handlers: Dict[TopicType, MessageHandler] = {
             TopicType.AUTOMATION: MessageHandler(
                 topic_type=TopicType.AUTOMATION,
@@ -41,6 +43,9 @@ class BaseAutomation(ABC):
                 description="전류값 메시지 처리"
             )
         }
+        
+        # 설정은 set_machine 이후에 초기화
+        self._settings = settings  # 설정 임시 저장
 
     def set_machine(self, machine: BaseMachine) -> None:
         """기기 정보 설정"""
@@ -50,7 +55,15 @@ class BaseAutomation(ABC):
         self.mqtt_topic = f"switch/{self.name}"
         self.switch_created_at = machine.switch_created_at
         self.sensor_name = self.name
+        
+        # 이름이 설정된 후에 로거 초기화
+        self.logger = self.logger.set_machine(self.name)
+        
+        # MQTT 구독 설정
         self._setup_mqtt_subscription()
+        
+        # 설정 초기화 (로거 설정 후)
+        self._init_from_settings(self._settings)
 
     def _setup_mqtt_subscription(self) -> None:
         """MQTT 토픽 구독 설정"""
@@ -69,12 +82,12 @@ class BaseAutomation(ABC):
                 mqtt.client.message_callback_add(self.current_topic, self._on_mqtt_message)
                 
                 self.mqtt_subscribed = True
-                custom_logger.info(
+                self.logger.info(
                     f"MQTT 콜백 등록 성공: {self.automation_topic}, "
                     f"{self.sensor_topic}, {self.current_topic}"
                 )
         except Exception as e:
-            custom_logger.error(f"MQTT 콜백 등록 실패: {str(e)}")
+            self.logger.error(f"MQTT 콜백 등록 실패: {str(e)}")
 
     def _on_mqtt_message(self, client, userdata, message) -> None:
         """MQTT 메시지 수신 처리 (기본)"""
@@ -87,20 +100,20 @@ class BaseAutomation(ABC):
             topic_type = TopicType.from_topic(mqtt_message.topic)
             
             if not topic_type:
-                custom_logger.warning(f"알 수 없는 토픽: {mqtt_message.topic}")
+                self.logger.warning(f"알 수 없는 토픽: {mqtt_message.topic}")
                 return
                 
             # 해당하는 핸들러 실행
             handler = self.message_handlers.get(topic_type)
             if handler:
-                custom_logger.debug(
+                self.logger.debug(
                     f"메시지 핸들러 실행: {handler.description} "
                     f"(토픽: {topic_type.value})"
                 )
                 handler.handler(mqtt_message)
 
         except Exception as e:
-            custom_logger.error(f"MQTT 메시지 처리 실패: {str(e)}")
+            self.logger.error(f"MQTT 메시지 처리 실패: {str(e)}")
 
     def _handle_automation_message(self, mqtt_message: MQTTMessage) -> None:
         """자동화 설정 메시지 처리"""
@@ -121,13 +134,13 @@ class BaseAutomation(ABC):
                 if new_settings:
                     self._init_from_settings(new_settings)
                     
-                custom_logger.info(
+                self.logger.info(
                     f"Device {self.name}: 자동화 설정 업데이트 "
                     f"(활성화: {self.active}, 설정: {new_settings})"
                 )
 
         except Exception as e:
-            custom_logger.error(f"자동화 설정 메시지 처리 실패: {str(e)}")
+            self.logger.error(f"자동화 설정 메시지 처리 실패: {str(e)}")
 
     def _handle_current_message(self, mqtt_message: MQTTMessage) -> None:
         """전류값 메시지 처리"""
@@ -147,14 +160,14 @@ class BaseAutomation(ABC):
                 
                 is_running = current_value > 0.1
                 if is_running != self.status:
-                    custom_logger.info(
+                    self.logger.info(
                         f"Device {self.name}: 전류 기반 상태 감지 "
                         f"(전류: {current_value}A, 상태: {'ON' if is_running else 'OFF'})"
                     )
                     self.status = is_running
 
         except Exception as e:
-            custom_logger.error(f"전류값 메시지 처리 실패: {str(e)}")
+            self.logger.error(f"전류값 메시지 처리 실패: {str(e)}")
 
     def _handle_switch_message(self, mqtt_message: MQTTMessage) -> None:
         """스위치 상태 메시지 처리"""
@@ -170,7 +183,7 @@ class BaseAutomation(ABC):
             if payload_data.data.name == self.name:
                 new_status = bool(payload_data.data.value)
                 if new_status != self.status:
-                    custom_logger.info(
+                    self.logger.info(
                         f"Device {self.name}: 스위치 상태 변경 감지 "
                         f"({'ON' if new_status else 'OFF'})"
                     )
@@ -181,7 +194,7 @@ class BaseAutomation(ABC):
                     redis.set(redis_key, str(int(new_status)))
 
         except Exception as e:
-            custom_logger.error(f"스위치 상태 메시지 처리 실패: {str(e)}")
+            self.logger.error(f"스위치 상태 메시지 처리 실패: {str(e)}")
 
     def _handle_environment_message(self, mqtt_message: MQTTMessage) -> None:
         """환경 센서값 메시지 처리"""
@@ -199,13 +212,13 @@ class BaseAutomation(ABC):
                 env_value = float(payload_data.data.value)
                 redis.set(redis_key, str(env_value))
                 
-                custom_logger.info(
+                self.logger.info(
                     f"Device {self.name}: 환경 센서값 수신 "
                     f"(값: {env_value})"
                 )
 
         except Exception as e:
-            custom_logger.error(f"환경 센서값 메시지 처리 실패: {str(e)}")
+            self.logger.error(f"환경 센서값 메시지 처리 실패: {str(e)}")
 
     def send_mqtt_message(self, new_status: bool) -> None:
         """MQTT 메시지 전송"""
@@ -224,9 +237,9 @@ class BaseAutomation(ABC):
             
             # 메시지 전송
             mqtt.publish_message(self.mqtt_topic, mqtt_payload.to_dict())
-            custom_logger.info(f"MQTT 메시지 전송 성공: {self.name} = {new_status}")
+            self.logger.info(f"MQTT 메시지 전송 성공: {self.name} = {new_status}")
         except Exception as e:
-            custom_logger.error(f"MQTT 메시지 전송 실패: {str(e)}")
+            self.logger.error(f"MQTT 메시지 전송 실패: {str(e)}")
             raise
 
     def send_websocket_message(self, new_status: bool) -> None:
@@ -243,9 +256,9 @@ class BaseAutomation(ABC):
             ws_client = ws(url=f'{SWITCH_SOCKET_ADDRESS}/{self.name}')    
             ws_client.send_message(**ws_payload.to_dict())
             ws_client.disconnect()
-            custom_logger.info(f"WebSocket 메시지 전송 성공: {self.name} = {new_status}")
+            self.logger.info(f"WebSocket 메시지 전송 성공: {self.name} = {new_status}")
         except Exception as e:
-            custom_logger.error(f"WebSocket 메시지 전송 실패: {str(e)}")
+            self.logger.error(f"WebSocket 메시지 전송 실패: {str(e)}")
             raise
 
     def update_device_status(self, new_status: bool) -> None:
@@ -254,9 +267,9 @@ class BaseAutomation(ABC):
             self.send_mqtt_message(new_status)
             self.send_websocket_message(new_status)
             self.status = new_status
-            custom_logger.info(f"상태 업데이트 성공: {self.name} / {self.device_id} = {new_status}")
+            self.logger.info(f"상태 업데이트 성공: {self.name} / {self.device_id} = {new_status}")
         except Exception as e:
-            custom_logger.error(f"상태 업데이트 실패: {str(e)}")
+            self.logger.error(f"상태 업데이트 실패: {str(e)}")
             raise
 
     def get_machine(self) -> BaseMachine:
@@ -281,10 +294,10 @@ class BaseAutomation(ABC):
                 return float(value)
             return None
         except ValueError as e:
-            custom_logger.error(f"센서값 변환 실패: {str(e)}")
+            self.logger.error(f"센서값 변환 실패: {str(e)}")
             return None
         except Exception as e:
-            custom_logger.error(f"센서값 조회 실패: {str(e)}")
+            self.logger.error(f"센서값 조회 실패: {str(e)}")
             return None
 
     @abstractmethod
@@ -297,6 +310,7 @@ class BaseAutomation(ABC):
         """자동화 제어 실행"""
         # 나중에 자동화 활성화하게 될 경우 mqtt로 변경값 받아와서 self.active 값 변경
         if not self.active:
-            custom_logger.debug(f"자동화 비활성화: {self.name}")
+            self.logger.debug(f"자동화 비활성화: {self.name}")
 
         return self.get_machine() 
+        

@@ -3,7 +3,6 @@ from typing import Optional, Tuple, Dict, Callable
 from threading import Timer
 from interfaces.automation.base import BaseAutomation
 from interfaces.Machine import BaseMachine
-from logger.custom_logger import custom_logger
 from interfaces.automation.models import TimeConfig, MQTTMessage, TopicType, MQTTPayloadData, SwitchMessage
 from resources import redis
 from constants import TREAD_DURATION_LIMIT
@@ -101,13 +100,13 @@ class IntervalAutomation(BaseAutomation):
                 unit=interval_settings.get('unit', 's')
             ).to_seconds()
             
-            custom_logger.info(
+            self.logger.info(
                 f"Interval 자동화 설정 초기화: "
                 f"duration={self.duration}s, interval={self.interval}s"
             )
             
         except Exception as e:
-            custom_logger.error(f"설정 초기화 실패: {str(e)}")
+            self.logger.error(f"설정 초기화 실패: {str(e)}")
             raise ValueError(f"설정 초기화 실패: {str(e)}")
 
     def update_settings(self, settings: dict) -> None:
@@ -132,14 +131,14 @@ class IntervalAutomation(BaseAutomation):
             return self.get_machine()
 
         except Exception as e:
-            custom_logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
+            self.logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
             raise
 
     def _on_mqtt_message(self, client, userdata, message) -> None:
         """MQTT 메시지 수신 처리 (Interval 자동화)"""
         try:
             if not self.active:
-                custom_logger.warning(f"Device {self.name}: 비활성화되어 메시지 처리 건너뜀")
+                self.logger.warning(f"Device {self.name}: 비활성화되어 메시지 처리 건너뜀")
                 return
             
             # MQTT 메시지를 객체로 변환
@@ -147,21 +146,21 @@ class IntervalAutomation(BaseAutomation):
             topic_type = TopicType.from_topic(mqtt_message.topic)
             
             if not topic_type:
-                custom_logger.warning(f"알 수 없는 토픽: {mqtt_message.topic}")
+                self.logger.warning(f"알 수 없는 토픽: {mqtt_message.topic}")
                 return
             
             # automation, current 토픽만 처리
             if topic_type in [TopicType.AUTOMATION, TopicType.CURRENT]:
                 handler = self.message_handlers.get(topic_type)
                 if handler:
-                    custom_logger.debug(
+                    self.logger.debug(
                         f"메시지 핸들러 실행: {handler.description} "
                         f"(토픽: {topic_type.value})"
                     )
                     handler.handler(mqtt_message)
                 
         except Exception as e:
-            custom_logger.error(f"MQTT 메시지 처리 실패: {str(e)}")
+            self.logger.error(f"MQTT 메시지 처리 실패: {str(e)}")
 
     def _handle_timers(self, current_status: bool) -> None:
         """타이머 처리"""
@@ -176,10 +175,10 @@ class IntervalAutomation(BaseAutomation):
             try:
                 self.update_device_status(False)
                 self.state.update_toggle_time(datetime.now())
-                custom_logger.info(f"Device {self.name}: duration({self.duration}초) 경과로 OFF")
+                self.logger.info(f"Device {self.name}: duration({self.duration}초) 경과로 OFF")
                 self._schedule_on_timer()
             except Exception as e:
-                custom_logger.error(f"OFF Timer callback 오류: {str(e)}")
+                self.logger.error(f"OFF Timer callback 오류: {str(e)}")
 
         self.state.timers.schedule(self.duration, off_callback, is_on=False)
         self._log_timer_scheduled("OFF", self.duration)
@@ -190,17 +189,17 @@ class IntervalAutomation(BaseAutomation):
             try:
                 self.update_device_status(True)
                 self.state.update_toggle_time(datetime.now())
-                custom_logger.info(f"Device {self.name}: interval({self.interval}초) 경과로 ON")
+                self.logger.info(f"Device {self.name}: interval({self.interval}초) 경과로 ON")
                 self._schedule_off_timer()
             except Exception as e:
-                custom_logger.error(f"ON Timer callback 오류: {str(e)}")
+                self.logger.error(f"ON Timer callback 오류: {str(e)}")
 
         self.state.timers.schedule(self.interval, on_callback, is_on=True)
         self._log_timer_scheduled("ON", self.interval)
 
     def _log_current_state(self, now: datetime, current_status: bool) -> None:
         """현재 상태 로깅"""
-        custom_logger.info(
+        self.logger.info(
             f"Device {self.name} 상태 체크: "
             f"현재시간={now.strftime('%H:%M:%S')}, "
             f"마지막토글={self.state.last_toggle_time.strftime('%H:%M:%S')}, "
@@ -212,7 +211,7 @@ class IntervalAutomation(BaseAutomation):
     def _log_timer_scheduled(self, timer_type: str, delay: float) -> None:
         """타이머 예약 로깅"""
         scheduled_time = datetime.now() + timedelta(seconds=delay)
-        custom_logger.info(
+        self.logger.info(
             f"Device {self.name}: {delay}초 후 {timer_type} 예약됨 "
             f"(예정 시각: {scheduled_time.strftime('%H:%M:%S')})"
         )
@@ -266,7 +265,7 @@ class IntervalAutomation(BaseAutomation):
                 self.state.update_toggle_time(current_time)
                 self._schedule_on_timer()
 
-            custom_logger.info(
+            self.logger.info(
                 f"Device {self.name}: 첫 실행 상태 설정 "
                 f"({'ON' if self.status else 'OFF'}) "
                 f"(Redis 마지막 상태 기준)"
@@ -274,7 +273,7 @@ class IntervalAutomation(BaseAutomation):
             return self.get_machine()
 
         except Exception as e:
-            custom_logger.error(f"첫 실행 상태 설정 실패: {str(e)}")
+            self.logger.error(f"첫 실행 상태 설정 실패: {str(e)}")
             # 에러 발생 시 안전하게 OFF로 시작
             self.update_device_status(False)
             self.state.update_toggle_time(current_time)

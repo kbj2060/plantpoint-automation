@@ -1,72 +1,128 @@
-import sys
+import os
 import logging
-import structlog
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
+from threading import current_thread
 
-# ANSI 색상 코드
-COLORS = {
-    'grey': '\033[38;5;240m',
-    'red': '\033[31m',
-    'green': '\033[32m',
-    'yellow': '\033[33m',
-    'blue': '\033[34m',
-    'magenta': '\033[35m',
-    'cyan': '\033[36m',
-    'white': '\033[37m',
-    'reset': '\033[0m'
-}
+class ThreadLogger:
+    _instance = None
 
-# 로그 레벨별 색상
-LEVEL_COLORS = {
-    'debug': COLORS['grey'],
-    'info': COLORS['green'],
-    'warning': COLORS['yellow'],
-    'error': COLORS['red'],
-    'critical': COLORS['red']
-}
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ThreadLogger, cls).__new__(cls)
+            cls._instance.loggers = {}
+            cls._instance.base_log_dir = '.logs'
+            
+            # 기본 로그 디렉토리 생성
+            if not os.path.exists(cls._instance.base_log_dir):
+                os.makedirs(cls._instance.base_log_dir)
 
-# 로깅 기본 설정
-logging.basicConfig(
-    format="%(message)s",
-    stream=sys.stdout,
-    level=logging.INFO,
-)
+        return cls._instance
 
-def add_timestamp(logger, method_name, event_dict):
-    """타임스탬프 추가"""
-    KST = timezone(timedelta(hours=9))
-    event_dict["timestamp"] = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
-    return event_dict
+    def __init__(self):
+        # __new__에서 이미 초기화했으므로 여기서는 생략
+        pass
 
-def console_formatter(logger, method_name, event_dict):
-    """콘솔 출력 형식 지정 (색상 포함)"""
-    timestamp = event_dict.pop("timestamp", "")
-    level = event_dict.pop("level", method_name).upper()
-    event = event_dict.pop("event", "")
-    
-    # 나머지 키워드 인자들을 문자열로 변환
-    extra = " ".join(f"{k}={v}" for k, v in event_dict.items())
-    
-    # 로그 레벨에 따른 색상 적용
-    level_color = LEVEL_COLORS.get(method_name.lower(), COLORS['white'])
-    
-    return (
-        f"{COLORS['cyan']}{timestamp}{COLORS['reset']} | "
-        f"{level_color}{level:8}{COLORS['reset']} | "
-        f"{COLORS['white']}{event} {extra}{COLORS['reset']}"
-    )
+    def get_normalized_thread_name(self, thread_name: str, machine_name: str = None) -> str:
+        """스레드 이름을 정규화"""
+        if machine_name:
+            return f'automation/{machine_name}'
+            
+        # 기본 스레드 매핑
+        thread_map = {
+            'MainThread': 'main',
+            'Thread-1': 'mqtt',
+            'Thread-2': 'websocket',
+        }
+        
+        if thread_name in thread_map:
+            return thread_map[thread_name]
+            
+        if '_connect' in thread_name:
+            return 'mqtt_connect'
+            
+        return 'other'
 
-# structlog 설정
-structlog.configure(
-    processors=[
-        add_timestamp,
-        structlog.stdlib.add_log_level,
-        structlog.processors.format_exc_info,
-        console_formatter,
-    ],
-    logger_factory=structlog.PrintLoggerFactory(),
-    cache_logger_on_first_use=True,
-)
+    def get_logger(self, machine_name=None):
+        """현재 스레드에 대한 로거 반환"""
+        thread_name = current_thread().name
+        normalized_name = self.get_normalized_thread_name(thread_name, machine_name)
+        
+        if normalized_name not in self.loggers:
+            # 새 로거 생성
+            logger = logging.getLogger(normalized_name)
+            logger.setLevel(logging.DEBUG)
+            
+            # 이미 핸들러가 있다면 제거
+            for handler in logger.handlers[:]:
+                logger.removeHandler(handler)
+            
+            # 콘솔 핸들러
+            console_handler = logging.StreamHandler()
+            console_handler.setLevel(logging.DEBUG)
+            console_formatter = logging.Formatter(
+                '%(asctime)s | [%(levelname)s] | %(threadName)s: %(message)s',
+                datefmt='%Y-%m-%d %H-%M-%S'
+            )
+            console_handler.setFormatter(console_formatter)
+            logger.addHandler(console_handler)
+            
+            # 오늘 날짜의 로그 디렉토리 생성
+            today = datetime.now().strftime('%Y-%m-%d')
+            today_log_dir = os.path.join(self.base_log_dir, today)
+            if not os.path.exists(today_log_dir):
+                os.makedirs(today_log_dir)
+                
+            # automation 디렉토리 생성 (필요한 경우)
+            if machine_name:
+                today_log_dir = os.path.join(today_log_dir, 'automation')
+                if not os.path.exists(today_log_dir):
+                    os.makedirs(today_log_dir)
+            
+            # 파일 핸들러
+            file_name = f'{normalized_name.split("/")[-1]}.log'  # automation/name -> name.log
+            file_path = os.path.join(today_log_dir, file_name)
+            
+            file_handler = RotatingFileHandler(
+                file_path,
+                maxBytes=10*1024*1024,
+                backupCount=5,
+                encoding='utf-8'
+            )
+            file_handler.setLevel(logging.DEBUG)
+            file_formatter = logging.Formatter(
+                '%(asctime)s | [%(levelname)s]: %(message)s',
+                datefmt='%Y-%m-%d %H-%M-%S'
+            )
+            file_handler.setFormatter(file_formatter)
+            logger.addHandler(file_handler)
+            
+            self.loggers[normalized_name] = logger
+            
+        return self.loggers[normalized_name]
 
-# 로거 인스턴스 생성
-custom_logger = structlog.get_logger()
+class CustomLogger:
+    def __init__(self):
+        self.machine_name = None
+        self._thread_logger = ThreadLogger()
+
+    def set_machine(self, machine_name):
+        """자동화 머신 이름 설정"""
+        self.machine_name = machine_name
+        return self
+
+    def debug(self, msg): 
+        self._thread_logger.get_logger(self.machine_name).debug(msg)
+    def info(self, msg): 
+        self._thread_logger.get_logger(self.machine_name).info(msg)
+    def warning(self, msg): 
+        self._thread_logger.get_logger(self.machine_name).warning(msg)
+    def error(self, msg): 
+        self._thread_logger.get_logger(self.machine_name).error(msg)
+    def critical(self, msg): 
+        self._thread_logger.get_logger(self.machine_name).critical(msg)
+    def exception(self, msg): 
+        self._thread_logger.get_logger(self.machine_name).exception(msg)
+
+# 전역 로거 인스턴스
+custom_logger = CustomLogger()

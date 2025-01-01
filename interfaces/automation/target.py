@@ -25,11 +25,11 @@ class TargetAutomation(BaseAutomation):
             self.required_count = 3  # 필요한 연속 카운트 수는 3
             self.current_threshold = 0.1
             self.value = None
-            custom_logger.info(f"Target 자동화 설정 초기화: target={self.target}, margin={self.margin}")
+            self.logger.info(f"Target 자동화 설정 초기화: target={self.target}, margin={self.margin}")
         except (TypeError, ValueError) as e:
             self.target = None
             self.margin = None
-            custom_logger.warning("Target 자동화 설정이 비어있습니다.")
+            self.logger.warning("Target 자동화 설정이 비어있습니다.")
 
     def get_device_status(self) -> bool:
         """전류값으로 장치 상태 확인"""
@@ -43,14 +43,14 @@ class TargetAutomation(BaseAutomation):
             is_running = current_value > self.current_threshold
             
             if is_running != bool(self.status):
-                custom_logger.info(
+                self.logger.info(
                     f"Device {self.name}: 전류 기반 상태 변경 감지 "
                     f"(전류: {current_value}A, 상태: {'ON' if is_running else 'OFF'})"
                 )
             
             return is_running
         except Exception as e:
-            custom_logger.error(f"전류값 확인 중 오류 발생: {str(e)}")
+            self.logger.error(f"전류값 확인 중 오류 발생: {str(e)}")
             return bool(self.status)
 
     def control(self) -> Optional[BaseMachine]:
@@ -59,12 +59,12 @@ class TargetAutomation(BaseAutomation):
             return None
 
         if not all([self.target is not None, self.margin is not None, self.pin, self.name]):
-            custom_logger.error(f"Device {self.name}: 필수 설정이 누락되었습니다.")
+            self.logger.error(f"Device {self.name}: 필수 설정이 누락되었습니다.")
             raise ValueError(f"Device {self.name}: 필수 설정이 누락되었습니다.")
         
         if self.value is None:
             # 센서값이 없으면 제어하지 않고 종료
-            custom_logger.info(f"Device {self.name}: 센서값이 없어 제어하지 않습니다.")
+            self.logger.info(f"Device {self.name}: 센서값이 없어 제어하지 않습니다.")
             return None
 
         try:
@@ -73,7 +73,7 @@ class TargetAutomation(BaseAutomation):
             upper_bound = self.target + self.margin
             
             # 현재 상태 로깅
-            custom_logger.info(
+            self.logger.info(
                 f"Device {self.name} 상태 체크: "
                 f"현재값={self.value}, "
                 f"목표값={self.target}, "
@@ -90,7 +90,7 @@ class TargetAutomation(BaseAutomation):
                 
                 if should_be_on != self.status:
                     self.update_device_status(should_be_on)
-                    custom_logger.info(
+                    self.logger.info(
                         f"Device {self.name}: 상태 변경 "
                         f"({'ON' if should_be_on else 'OFF'}으로 전환) "
                         f"현재값({self.value}), "
@@ -99,9 +99,9 @@ class TargetAutomation(BaseAutomation):
                     )
             else:
                 # 허용 오차 범위 내에 있는 경우
-                if self.in_range_count < self.required_count:
+                if self.in_range_count < self.required_count and self.status:
                     self.in_range_count += 1
-                    custom_logger.info(
+                    self.logger.info(
                         f"Device {self.name}: 목표값 범위 내 "
                         f"(연속 카운트: {self.in_range_count}/{self.required_count})"
                     )
@@ -110,7 +110,7 @@ class TargetAutomation(BaseAutomation):
                 if self.in_range_count >= self.required_count and self.status:
                     self.update_device_status(False)
                     self.in_range_count = 0  # 카운트 리셋
-                    custom_logger.info(
+                    self.logger.info(
                         f"Device {self.name}: 목표값 {self.required_count}회 연속 도달로 OFF "
                         f"현재값({self.value}), "
                         f"목표값({self.target}), "
@@ -120,14 +120,14 @@ class TargetAutomation(BaseAutomation):
             return self.get_machine()
 
         except Exception as e:
-            custom_logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
+            self.logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
             raise 
 
     def _on_mqtt_message(self, client, userdata, message) -> None:
         """MQTT 메시지 수신 처리 (Target 자동화)"""
         try:
             if not self.active:
-                custom_logger.warning(f"Device {self.name}: 비활성화되어 메시지 처리 건너뜀")
+                self.logger.warning(f"Device {self.name}: 비활성화되어 메시지 처리 건너뜀")
                 return
         
             # MQTT 메시지를 객체로 변환
@@ -135,21 +135,21 @@ class TargetAutomation(BaseAutomation):
             topic_type = TopicType.from_topic(mqtt_message.topic)
             
             if not topic_type:
-                custom_logger.warning(f"알 수 없는 토픽: {mqtt_message.topic}")
+                self.logger.warning(f"알 수 없는 토픽: {mqtt_message.topic}")
                 return
             
             # automation, current, environment 토픽만 처리
             if topic_type in [TopicType.AUTOMATION, TopicType.CURRENT, TopicType.ENVIRONMENT]:
                 handler = self.message_handlers.get(topic_type)
                 if handler:
-                    custom_logger.debug(
+                    self.logger.debug(
                         f"메시지 핸들러 실행: {handler.description} "
                         f"(토픽: {topic_type.value})"
                     )
                     handler.handler(mqtt_message)
                 
         except Exception as e:
-            custom_logger.error(f"MQTT 메시지 처리 실패: {str(e)}") 
+            self.logger.error(f"MQTT 메시지 처리 실패: {str(e)}") 
 
     def get_sensor_value(self, sensor_name: str) -> Optional[float]:
         """Redis에서 센서값 조회 (Target 자동화 - 환경 센서값 + 전류값)"""
@@ -162,15 +162,15 @@ class TargetAutomation(BaseAutomation):
             redis_key = self.sensor_topic
             value = redis.get(redis_key)
             if value is None:
-                custom_logger.info(f"Device {self.name}: 센서값 수신 대기 중... (키: {redis_key})")
+                self.logger.info(f"Device {self.name}: 센서값 수신 대기 중... (키: {redis_key})")
                 return None
             
             return float(value)
         except ValueError as e:
-            custom_logger.error(f"센서값 변환 실패: {str(e)}")
+            self.logger.error(f"센서값 변환 실패: {str(e)}")
             return None
         except Exception as e:
-            custom_logger.error(f"센서값 조회 실패: {str(e)}")
+            self.logger.error(f"센서값 조회 실패: {str(e)}")
             return None 
 
     def _handle_environment_message(self, mqtt_message: MQTTMessage) -> None:
@@ -189,7 +189,7 @@ class TargetAutomation(BaseAutomation):
                 redis_key = f"environment/{self.name}"
                 redis.set(redis_key, str(self.value))
                 
-                custom_logger.info(
+                self.logger.info(
                     f"Device {self.name}: 환경 센서값 수신 "
                     f"(값: {self.value})"
                 )
@@ -197,12 +197,12 @@ class TargetAutomation(BaseAutomation):
                 try:
                     controlled_machine = self.control()
                     if controlled_machine:
-                        custom_logger.info(
+                        self.logger.info(
                             f"자동화 실행 성공: {self.name} "
                             f"(현재값: {self.value}, 상태: {self.status})"
                         )
                 except Exception as e:
-                    custom_logger.error(f"자동화 실행 중 오류 발생: {str(e)}")
+                    self.logger.error(f"자동화 실행 중 오류 발생: {str(e)}")
 
         except Exception as e:
-            custom_logger.error(f"환경 센서값 메시지 처리 실패: {str(e)}") 
+            self.logger.error(f"환경 센서값 메시지 처리 실패: {str(e)}") 

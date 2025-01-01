@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Optional
 from interfaces.automation.base import BaseAutomation
 from interfaces.Machine import BaseMachine
-from logger.custom_logger import custom_logger
 from interfaces.automation.models import MQTTMessage, TopicType
 
 class RangeAutomation(BaseAutomation):
@@ -11,11 +10,11 @@ class RangeAutomation(BaseAutomation):
         try:
             self.start = settings.get('start')
             self.end = settings.get('end')
-            custom_logger.info(f"Range 자동화 설정 초기화: start={self.start}, end={self.end}")
+            self.logger.info(f"Range 자동화 설정 초기화: start={self.start}, end={self.end}")
         except Exception as e:
             self.start = None
             self.end = None
-            custom_logger.warning("Range 자동화 설정이 비어있습니다.")
+            self.logger.warning("Range 자동화 설정이 비어있습니다.")
 
     def is_time_in_range(self, current_time: str) -> bool:
         """시간이 설정된 범위 내에 있는지 확인"""
@@ -29,7 +28,7 @@ class RangeAutomation(BaseAutomation):
             return None
 
         if not all([self.start, self.end, self.pin]):
-            custom_logger.error(f"Device {self.name}: 필수 설정이 누락되었습니다.")
+            self.logger.error(f"Device {self.name}: 필수 설정이 누락되었습니다.")
             raise ValueError(f"Device {self.name}: 필수 설정이 누락되었습니다.")
 
         try:
@@ -43,14 +42,14 @@ class RangeAutomation(BaseAutomation):
             return self.get_machine()
 
         except Exception as e:
-            custom_logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
+            self.logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
             raise 
 
     def _on_mqtt_message(self, client, userdata, message) -> None:
         """MQTT 메시지 수신 처리 (Range 자동화)"""
         try:
             if not self.active:
-                custom_logger.warning(f"Device {self.name}: 비활성화되어 메시지 처리 건너뜀")
+                self.logger.warning(f"Device {self.name}: 비활성화되어 메시지 처리 건너뜀")
                 return
             
             # MQTT 메시지를 객체로 변환
@@ -58,18 +57,18 @@ class RangeAutomation(BaseAutomation):
             topic_type = TopicType.from_topic(mqtt_message.topic)
             
             if not topic_type:
-                custom_logger.warning(f"알 수 없는 토픽: {mqtt_message.topic}")
+                self.logger.warning(f"알 수 없는 토픽: {mqtt_message.topic}")
                 return
             
             # automation, current 토픽만 처리
             if topic_type in [TopicType.AUTOMATION, TopicType.CURRENT]:
                 handler = self.message_handlers.get(topic_type)
                 if handler:
-                    custom_logger.debug(
+                    self.logger.debug(
                         f"메시지 핸들러 실행: {handler.description} "
                         f"(토픽: {topic_type.value})"
                     )
                     handler.handler(mqtt_message)
                 
         except Exception as e:
-            custom_logger.error(f"MQTT 메시지 처리 실패: {str(e)}") 
+            self.logger.error(f"MQTT 메시지 처리 실패: {str(e)}") 

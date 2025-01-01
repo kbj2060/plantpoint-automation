@@ -49,7 +49,7 @@ class Store:
             self.sensors: List[SensorResponse] = http.get_sensors()
             self.automations: List[AutomationResponse] = http.get_automations()
             self.interval_automated_switches: List[AutomationSwitchResponse] = http.get_interval_device_states()
-            
+
             custom_logger.info(f"Store 데이터 로드 완료:")
             custom_logger.info(f"- Machines: {len(self.machines)}")
             custom_logger.info(f"- Automations: {len(self.automations)}")
