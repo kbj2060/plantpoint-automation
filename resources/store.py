@@ -56,12 +56,12 @@ class Store:
             custom_logger.info(f"- Machines: {len(self.machines)}")
             custom_logger.info(f"- Automations: {len(self.automations)}")
             custom_logger.info(f"- Currents: {len(self.currents)}")
-
-            # 기기 정보 업데이트
+            custom_logger.info(f"- Currents: {self.currents}")  
             self._update_machines()
 
             # Redis에 데이터 저장
             self._save_to_redis()
+            custom_logger.info(f"Currents: {self.currents}")
 
 
         except Exception as e:
@@ -104,3 +104,5 @@ class Store:
             )
             for data in merged_data
         ]
+
+store = Store()

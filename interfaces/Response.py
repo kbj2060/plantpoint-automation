@@ -47,3 +47,9 @@ class SensorResponse:
         self.name = name
         self.created_at = created_at
         self.pin = pin
+
+class CurrentResponse:
+    def __init__(self, device: str, current: float, created_at: datetime.datetime):
+        self.device = device
+        self.current = current
+        self.created_at = created_at

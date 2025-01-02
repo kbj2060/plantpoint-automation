@@ -20,7 +20,7 @@ SWITCH_SOCKET_ADDRESS = os.getenv('SWITCH_SOCKET_ADDRESS')
 CURRENT_SOCKET_ADDRESS = os.getenv('CURRENT_SOCKET_ADDRESS')
 SOCKET_ADDRESS = os.getenv('SOCKET_ADDRESS')
 WS_SWITCH_EVENT = os.getenv('WS_SWITCH_EVENT')
-# WS_CURRENT_EVENT = os.getenv('WS_CURRENT_EVENT')
+WS_CURRENT_EVENT = os.getenv('WS_SWITCH_EVENT')
 
 MQTT_HOST = os.getenv('MQTT_HOST')
 MQTT_PORT = os.getenv('MQTT_PORT')
@@ -42,6 +42,8 @@ INTERVAL_DEVICE_STATES_READ_URL = f'{BACKEND_ADDRESS}/switches/interval-states'
 SWITCH_EACH_LATEST_READ_URL = f'{BACKEND_ADDRESS}/switches/each-latest'
 SWITCH_CREATE_URL = f'{BACKEND_ADDRESS}/switches/create'
 
+CURRENT_READ_URL = f'{BACKEND_ADDRESS}/current/read-all'
+
 MACHINE_READ_URL = f'{BACKEND_ADDRESS}/device?type=machine'
 SENSOR_READ_URL = f'{BACKEND_ADDRESS}/device?type=sensor'
 
@@ -53,7 +55,7 @@ NAME = "Auto"
 TREAD_DURATION_LIMIT=60
 
 SEND_SWITCH_TO_SERVER = 'sendSwitchToServer'
-SEND_SWITCH_TO_CLIENT = 'sendSwitchToClient'
+SEND_CURRENT_TO_SERVER = 'sendCurrentToServer'
 
 DB_LOGGER_MSG = lambda x: {"success_msg": f"Getting {x} From DB is Completed!",
                                 "error_msg": f"Cannot Get {x} From DB"}
@@ -64,4 +66,5 @@ HTTP_LOGGER_POST_MSG = lambda x: {"success_msg": f"Posting {x} To HTTP is Comple
 WS_LOGGER_MSG = lambda x: {"success_msg": f"Emitting {x} To Clients is Completed!",
                         "error_msg": f"Cannot Emit {x} To Clients"}
 BOUNDARY_ERROR_MSG = "Out of Conditions Error. Please, Check Your Conditions."
+
 

@@ -1,7 +1,7 @@
 import requests
 from logger.custom_logger import custom_logger
 from constants import (
-    INTERVAL_DEVICE_STATES_READ_URL, SIGNIN_URL, AUTOMATION_READ_URL, ENVIRONMENT_EACH_LATEST_READ_URL,
+    CURRENT_READ_URL, INTERVAL_DEVICE_STATES_READ_URL, SIGNIN_URL, AUTOMATION_READ_URL, ENVIRONMENT_EACH_LATEST_READ_URL,
     ENVIRONMENT_TYPE_READ_URL, SWITCH_EACH_LATEST_READ_URL, MACHINE_READ_URL,
     SENSOR_READ_URL, USERNAME, PASSWORD
 )
@@ -51,3 +51,6 @@ class HTTP:
 
     def get_sensors(self) -> list:
         return self._get_request(SENSOR_READ_URL) 
+    
+    def get_currents(self) -> list:
+        return self._get_request(CURRENT_READ_URL)
