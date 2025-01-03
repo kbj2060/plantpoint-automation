@@ -1,8 +1,8 @@
 from typing import List, Dict, Optional
 from datetime import datetime
 from dataclasses import dataclass
-from interfaces.Machine import BaseMachine
-from interfaces.Response import (
+from models.Machine import BaseMachine
+from models.Response import (
     AutomationResponse, 
     AutomationSwitchResponse,
     CurrentResponse, 

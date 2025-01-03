@@ -3,12 +3,12 @@ from dataclasses import dataclass
 
 class SwitchData(TypedDict):
     name: str
-    value: Literal[0, 1]
+    value: float
 
 class MQTTPayload(TypedDict):
     pattern: str
     data: SwitchData
 
 class WSPayload(TypedDict):
-    event: Literal['sendSwitchToServer']
+    event: Literal['sendSwitchToServer', 'sendCurrentToServer']
     data: dict[str, bool | str]

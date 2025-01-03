@@ -1,7 +1,7 @@
 from typing import List, Dict
 from logger.custom_logger import custom_logger
 from store import Store
-from interfaces.automation import create_automation
+from models.automation import create_automation
 from managers.thread_manager import ThreadManager
 from constants import TREAD_DURATION_LIMIT
 

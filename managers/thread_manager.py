@@ -1,8 +1,8 @@
 import threading
 from typing import List, Dict
 from logger.custom_logger import custom_logger
-from interfaces.automation.base import BaseAutomation
-from interfaces.Current import CurrentThread
+from models.automation.base import BaseAutomation
+from models.Current import CurrentThread
 from threading import Event
 
 class ThreadManager:

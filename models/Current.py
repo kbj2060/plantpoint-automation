@@ -6,6 +6,7 @@ from collections import defaultdict
 from resources import mqtt, ws
 from constants import CURRENT_SOCKET_ADDRESS, SEND_CURRENT_TO_SERVER
 from logger.custom_logger import custom_logger
+from models.Message import WSPayload, MQTTPayload
 
 class CurrentThread(Thread):
     def __init__(self, current_configs: List[Dict]):
@@ -108,7 +109,7 @@ class CurrentThread(Thread):
         """MQTT로 전류값 전송"""
         try:
             topic = f"current/{device}"
-            payload = {
+            payload: MQTTPayload = {
                 "pattern": topic,
                 "data": {
                     "name": device,
@@ -123,7 +124,7 @@ class CurrentThread(Thread):
     def _send_websocket_message(self, device: str, value: float):
         """WebSocket으로 전류값 전송"""
         try:
-            payload = {
+            payload: WSPayload = {
                 "event": SEND_CURRENT_TO_SERVER,
                 "data": {
                     "name": device,

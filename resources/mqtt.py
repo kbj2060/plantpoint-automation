@@ -24,7 +24,6 @@ class MQTTClient:
             self.client.subscribe([
                 ("environment/#", 0),
                 ("automation/#", 0),
-                ("current/#", 0),
                 ("switch/#", 0)
             ])
             custom_logger.info("MQTT 토픽 구독: environment/#, automation/#, current/#, switch/#")

@@ -1,21 +1,32 @@
 from typing import Optional
-from interfaces.automation.base import BaseAutomation
-from interfaces.Machine import BaseMachine
+from models.automation.base import BaseAutomation
+from models.Machine import BaseMachine
 from logger.custom_logger import custom_logger
-from interfaces.automation.models import MQTTMessage, MQTTPayloadData, MessageHandler, SwitchMessage, TopicType
+from models.automation.models import MQTTMessage, MQTTPayloadData, MessageHandler, SwitchMessage, TopicType
 from resources import redis
 
 class TargetAutomation(BaseAutomation):
     def __init__(self, device_id: str, category: str, active: bool, settings: dict, updated_at: str = None):
         super().__init__(device_id, category, active, settings, updated_at)
         
-        # Target 자동화는 environment 토픽도 처리
-        self.message_handlers[TopicType.ENVIRONMENT] = MessageHandler(
-            topic_type=TopicType.ENVIRONMENT,
-            handler=self._handle_environment_message,
-            description="환경 센서값 메시지 처리"
-        )
-
+        self.message_handlers = {
+            TopicType.AUTOMATION: MessageHandler(
+                topic_type=TopicType.AUTOMATION,
+                handler=self._handle_automation_message,
+                description="자동화 설정 메시지 처리"
+            ),
+            TopicType.SWITCH: MessageHandler(
+                topic_type=TopicType.SWITCH,
+                handler=self._handle_switch_message,
+                description="스위치 상태 메시지 처리"
+            ),
+            TopicType.ENVIRONMENT: MessageHandler(
+                topic_type=TopicType.ENVIRONMENT,
+                handler=self._handle_environment_message,
+                description="환경 센서값 메시지 처리"
+            )
+        }
+        
     def _init_from_settings(self, settings: dict) -> None:
         """Target 자동화 설정 초기화"""
         try:
@@ -30,28 +41,6 @@ class TargetAutomation(BaseAutomation):
             self.target = None
             self.margin = None
             self.logger.warning("Target 자동화 설정이 비어있습니다.")
-
-    def get_device_status(self) -> bool:
-        """전류값으로 장치 상태 확인"""
-        try:
-            current_value = self.get_sensor_value(self.current_topic)  # 저장된 전류값 토픽 사용
-            if current_value is None:
-                # 전류값을 못 받아올 경우 기존 상태 반환
-                return bool(self.status)
-            
-            # 전류값이 임계값보다 크면 작동 중
-            is_running = current_value > self.current_threshold
-            
-            if is_running != bool(self.status):
-                self.logger.info(
-                    f"Device {self.name}: 전류 기반 상태 변경 감지 "
-                    f"(전류: {current_value}A, 상태: {'ON' if is_running else 'OFF'})"
-                )
-            
-            return is_running
-        except Exception as e:
-            self.logger.error(f"전류값 확인 중 오류 발생: {str(e)}")
-            return bool(self.status)
 
     def control(self) -> Optional[BaseMachine]:
         """목표값 기반 제어 실행"""
@@ -122,56 +111,6 @@ class TargetAutomation(BaseAutomation):
         except Exception as e:
             self.logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
             raise 
-
-    def _on_mqtt_message(self, client, userdata, message) -> None:
-        """MQTT 메시지 수신 처리 (Target 자동화)"""
-        try:
-            if not self.active:
-                self.logger.warning(f"Device {self.name}: 비활성화되어 메시지 처리 건너뜀")
-                return
-        
-            # MQTT 메시지를 객체로 변환
-            mqtt_message = MQTTMessage.from_message(message)
-            topic_type = TopicType.from_topic(mqtt_message.topic)
-            
-            if not topic_type:
-                self.logger.warning(f"알 수 없는 토픽: {mqtt_message.topic}")
-                return
-            
-            # automation, current, environment 토픽만 처리
-            if topic_type in [TopicType.AUTOMATION, TopicType.CURRENT, TopicType.ENVIRONMENT]:
-                handler = self.message_handlers.get(topic_type)
-                if handler:
-                    self.logger.debug(
-                        f"메시지 핸들러 실행: {handler.description} "
-                        f"(토픽: {topic_type.value})"
-                    )
-                    handler.handler(mqtt_message)
-                
-        except Exception as e:
-            self.logger.error(f"MQTT 메시지 처리 실패: {str(e)}") 
-
-    def get_sensor_value(self, sensor_name: str) -> Optional[float]:
-        """Redis에서 센서값 조회 (Target 자동화 - 환경 센서값 + 전류값)"""
-        try:
-            # 전류값 조회는 부모 클래스 메서드 사용
-            if sensor_name.startswith('current/'):
-                return super().get_sensor_value(sensor_name)
-            
-            # 환경 센서값 조회
-            redis_key = self.sensor_topic
-            value = redis.get(redis_key)
-            if value is None:
-                self.logger.info(f"Device {self.name}: 센서값 수신 대기 중... (키: {redis_key})")
-                return None
-            
-            return float(value)
-        except ValueError as e:
-            self.logger.error(f"센서값 변환 실패: {str(e)}")
-            return None
-        except Exception as e:
-            self.logger.error(f"센서값 조회 실패: {str(e)}")
-            return None 
 
     def _handle_environment_message(self, mqtt_message: MQTTMessage) -> None:
         """환경 센서값 메시지 처리 (Target 자동화)"""

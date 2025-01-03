@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING
-from interfaces.automation.range import RangeAutomation
-from interfaces.automation.interval import IntervalAutomation
-from interfaces.automation.target import TargetAutomation
-from interfaces.automation.base import BaseAutomation
+from models.automation.range import RangeAutomation
+from models.automation.interval import IntervalAutomation
+from models.automation.target import TargetAutomation
+from models.automation.base import BaseAutomation
 from logger.custom_logger import custom_logger
 
 if TYPE_CHECKING:

@@ -1,6 +1,6 @@
 from typing import Dict, List
 from logger.custom_logger import custom_logger
-from interfaces.Current import CurrentThread
+from models.Current import CurrentThread
 from managers.thread_manager import ThreadManager
 
 class CurrentManager:
