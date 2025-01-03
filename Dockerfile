@@ -1,5 +1,5 @@
 # 베이스 이미지 선택
-FROM python:3.9-slim
+FROM python:3.13-slim
 
 # 필수 패키지 설치
 RUN apt-get update && apt-get install -y \
@@ -24,4 +24,4 @@ COPY . .
 COPY .env .env
 
 # 기본 실행 명령어 (컨테이너가 계속 작동하도록 설정)
-CMD ["tail", "-f", "/dev/null"]
+CMD ["python3", "main.py"]
