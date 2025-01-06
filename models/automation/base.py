@@ -56,7 +56,7 @@ class BaseAutomation(ABC):
     def set_machine(self, machine: BaseMachine) -> None:
         """기기 정보 설정 및 GPIO 초기화"""
         self.name = machine.name
-        self.pin = machine.pin
+        self.pin = int(machine.pin)
         self.status = machine.status
         self.mqtt_topic = f"switch/{self.name}"
         self.switch_created_at = machine.switch_created_at

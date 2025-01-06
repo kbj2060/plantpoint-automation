@@ -119,11 +119,12 @@ class RangeAutomation(BaseAutomation):
             raise
 
     def control(self) -> Optional[BaseMachine]:
-        """Range 자동화 실행"""
-        if not self.active:
-            return None
-            
+        """Range 제어 실행"""
         try:
+            if not self.active:
+                self.logger.debug(f"자동화 비활성화: {self.name}")
+                return None
+
             now = datetime.now()
             today = now.date()
             
@@ -144,8 +145,16 @@ class RangeAutomation(BaseAutomation):
             
             # 현재 시간이 범위를 벗어난 경우 다음 주기로 설정
             if now > end_time:
+                # 상태가 켜져있으면 끄기
+                if self.status:
+                    self.logger.info(f"시간 범위 종료로 {self.name} 끄기")
+                    self.update_device_status(False)
                 start_time += timedelta(days=1)
                 end_time += timedelta(days=1)
+            elif now < start_time and self.status:
+                # 시작 시간 이전인데 켜져있으면 끄기
+                self.logger.info(f"시작 시간 이전이므로 {self.name} 끄기")
+                self.update_device_status(False)
             
             # 타이머 설정
             self._schedule_timers(now, start_time, end_time)
@@ -160,6 +169,10 @@ class RangeAutomation(BaseAutomation):
             
         except Exception as e:
             self.logger.error(f"Range 제어 실패: {str(e)}")
+            # 에러 발생 시 안전하게 OFF
+            if self.status:
+                self.logger.info(f"에러 발생으로 {self.name} 안전하게 끄기")
+                self.update_device_status(False)
             return None
 
     def _schedule_timers(self, now: datetime, start_time: datetime, end_time: datetime):
