@@ -12,6 +12,7 @@ from models.automation.models import (
     TopicType,
     MessageHandler
 )
+import RPi.GPIO as GPIO
 
 class BaseAutomation(ABC):
     def __init__(self, device_id: int, category: str, active: bool, settings: dict, updated_at: str):
@@ -47,14 +48,20 @@ class BaseAutomation(ABC):
         # 설정은 set_machine 이후에 초기화
         self._settings = settings  # 설정 임시 저장
 
+        # GPIO 설정
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
+        self.gpio_initialized = False
+
     def set_machine(self, machine: BaseMachine) -> None:
-        """기기 정보 설정"""
+        """기기 정보 설정 및 GPIO 초기화"""
         self.name = machine.name
         self.pin = machine.pin
         self.status = machine.status
         self.mqtt_topic = f"switch/{self.name}"
         self.switch_created_at = machine.switch_created_at
         self.sensor_name = self.name
+        
         
         # 이름이 설정된 후에 로거 초기화
         self.logger = self.logger.set_machine(self.name)
@@ -64,6 +71,21 @@ class BaseAutomation(ABC):
         
         # 설정 초기화 (로거 설정 후)
         self._init_from_settings(self._settings)
+
+        # GPIO 설정
+        self._setup_gpio()
+
+    def _setup_gpio(self) -> None:
+        """GPIO 핀 설정"""
+        try:
+            if not self.gpio_initialized and self.pin is not None:
+                GPIO.setup(self.pin, GPIO.OUT)
+                GPIO.output(self.pin, GPIO.HIGH if self.status else GPIO.LOW)
+                self.gpio_initialized = True
+                self.logger.info(f"GPIO 설정 완료: pin={self.pin}, initial_status={'ON' if self.status else 'OFF'}")
+        except Exception as e:
+            self.logger.error(f"GPIO 설정 실패: {str(e)}")
+            raise
 
     def _setup_mqtt_subscription(self) -> None:
         """MQTT 토픽 구독 설정"""
@@ -141,7 +163,7 @@ class BaseAutomation(ABC):
             self.logger.error(f"자동화 설정 메시지 처리 실패: {str(e)}")
 
     def _handle_switch_message(self, mqtt_message: MQTTMessage) -> None:
-        """스위치 상태 메시지 처리"""
+        """스위치 상태 메시지 처리 및 GPIO 제어"""
         try:
             payload_data = MQTTPayloadData(
                 pattern=mqtt_message.topic,
@@ -154,13 +176,15 @@ class BaseAutomation(ABC):
             if payload_data.data.name == self.name:
                 new_status = bool(payload_data.data.value)
                 if new_status != self.status:
-                    self.logger.info(
-                        f"Device {self.name}: 스위치 상태 변경 감지 "
-                        f"({'ON' if new_status else 'OFF'})"
-                    )
-                    self.status = new_status
+                    # GPIO 제어
+                    if self.gpio_initialized:
+                        GPIO.output(self.pin, GPIO.HIGH if new_status else GPIO.LOW)
+                        self.logger.info(
+                            f"GPIO 상태 변경: pin={self.pin}, "
+                            f"status={'ON' if new_status else 'OFF'}"
+                        )
                     
-                    # Redis에 상태 저장 (토픽을 키로 사용)
+                    self.status = new_status
                     redis.set(mqtt_message.topic, str(int(new_status)))
 
         except Exception as e:
@@ -208,8 +232,16 @@ class BaseAutomation(ABC):
             raise
 
     def update_device_status(self, new_status: bool) -> None:
-        """디바이스 상태 업데이트 및 메시지 전송"""
+        """디바이스 상태 업데이트 및 GPIO 제어"""
         try:
+            # GPIO 제어
+            if self.gpio_initialized:
+                GPIO.output(self.pin, GPIO.HIGH if new_status else GPIO.LOW)
+                self.logger.info(
+                    f"GPIO 상태 변경: pin={self.pin}, "
+                    f"status={'ON' if new_status else 'OFF'}"
+                )
+            
             self.send_mqtt_message(new_status)
             self.send_websocket_message(new_status)
             self.status = new_status
@@ -241,4 +273,13 @@ class BaseAutomation(ABC):
             self.logger.debug(f"자동화 비활성화: {self.name}")
 
         return self.get_machine() 
+
+    def __del__(self):
+        """객체 소멸 시 GPIO 정리"""
+        if hasattr(self, 'gpio_initialized') and self.gpio_initialized:
+            try:
+                GPIO.cleanup(self.pin)
+                self.logger.info(f"GPIO 정리 완료: pin={self.pin}")
+            except Exception as e:
+                self.logger.error(f"GPIO 정리 실패: {str(e)}") 
         
