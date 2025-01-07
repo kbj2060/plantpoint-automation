@@ -1,6 +1,6 @@
 from threading import Thread
 import time
-# import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 from typing import Dict, List
 from collections import defaultdict
 from resources import mqtt, ws
@@ -10,15 +10,6 @@ from models.Message import WSPayload, MQTTPayload
 
 class CurrentThread(Thread):
     def __init__(self, current_configs: List[Dict]):
-        """
-        current_configs: [
-            {
-                'device': 'device_name',
-                'pin': gpio_pin_number
-            },
-            ...
-        ]
-        """
         super().__init__()
         self.current_configs = current_configs
         self.active = True
@@ -28,10 +19,10 @@ class CurrentThread(Thread):
         self.BUFFER_SIZE = 5  # 5초 동안의 데이터 수집
         
         # GPIO 설정
-        # GPIO.setmode(GPIO.BCM)
-        # for config in current_configs:
-        #     GPIO.setup(config['pin'], GPIO.IN)
-        #     self.previous_states[config['device']] = 0  # 초기값 설정
+        GPIO.setmode(GPIO.BCM)
+        for config in current_configs:
+            GPIO.setup(config['pin'], GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+            self.previous_states[config['device']] = 0  
             
         self.daemon = True
         
@@ -43,7 +34,7 @@ class CurrentThread(Thread):
         while self.active:
             try:
                 self._check_and_send_currents()
-                time.sleep(1)  # 1초 간격으로 체크
+                time.sleep(3)  # 1초 간격으로 체크
                 
             except Exception as e:
                 custom_logger.error(f"전류 모니터링 오류: {str(e)}")
@@ -54,11 +45,11 @@ class CurrentThread(Thread):
         for config in self.current_configs:
             try:
                 device = config['device']
-                # raw_value = GPIO.input(config['pin'])
-                # current_value = self._convert_to_current(raw_value)
+                raw_value = GPIO.input(config['pin'])
+                current_value = self._convert_to_current(raw_value)
                 
                 # 버퍼에 현재 값 추가
-                # self.reading_buffer[device].append(current_value)
+                self.reading_buffer[device].append(current_value)
                 
                 # 버퍼가 가득 차면 처리
                 if len(self.reading_buffer[device]) >= self.BUFFER_SIZE:
