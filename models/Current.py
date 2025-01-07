@@ -13,7 +13,6 @@ class CurrentThread(Thread):
         super().__init__()
         self.current_configs = current_configs
         self.active = True
-        self.threshold = 1.0  # 작동 중 판단 임계값
         self.previous_states = {}  # 이전 상태 저장
         self.reading_buffer = defaultdict(list)  # 디바이스별 읽기 버퍼
         self.BUFFER_SIZE = 5  # 5초 동안의 데이터 수집
@@ -22,7 +21,7 @@ class CurrentThread(Thread):
         GPIO.setmode(GPIO.BCM)
         for config in current_configs:
             GPIO.setup(config['pin'], GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-            self.previous_states[config['device']] = 0  
+            self.previous_states[config['device']] = GPIO.LOW
             
         self.daemon = True
         
@@ -34,7 +33,7 @@ class CurrentThread(Thread):
         while self.active:
             try:
                 self._check_and_send_currents()
-                time.sleep(3)  # 1초 간격으로 체크
+                time.sleep(1)  # 1초 간격으로 체크
                 
             except Exception as e:
                 custom_logger.error(f"전류 모니터링 오류: {str(e)}")
@@ -45,66 +44,60 @@ class CurrentThread(Thread):
         for config in self.current_configs:
             try:
                 device = config['device']
-                raw_value = GPIO.input(config['pin'])
-                current_value = self._convert_to_current(raw_value)
+                current_state = GPIO.input(config['pin'])
                 
-                # 버퍼에 현재 값 추가
-                self.reading_buffer[device].append(current_value)
+                # 버퍼에 현재 상태 추가
+                self.reading_buffer[device].append(current_state)
                 
                 # 버퍼가 가득 차면 처리
                 if len(self.reading_buffer[device]) >= self.BUFFER_SIZE:
-                    stable_value = self._process_buffer(device)
-                    if stable_value is not None:
-                        self._handle_current_change(device, stable_value)
+                    stable_state = self._process_buffer(device)
+                    if stable_state is not None and stable_state != self.previous_states[device]:
+                        self._handle_current_change(device, stable_state)
+                        self.previous_states[device] = stable_state
                     # 버퍼 초기화
                     self.reading_buffer[device] = []
                     
             except Exception as e:
                 custom_logger.error(f"전류 체크 실패 (device: {config['device']}): {str(e)}")
     
-    def _process_buffer(self, device: str) -> float:
-        """버퍼의 값들을 분석하여 안정적인 값 반환"""
+    def _process_buffer(self, device: str) -> int:
+        """버퍼의 값들을 분석하여 안정적인 상태 반환"""
         buffer = self.reading_buffer[device]
         
         # 모든 값이 동일한지 확인
         if len(set(buffer)) == 1:
-            return buffer[0]
+            return buffer[0]  # GPIO.HIGH 또는 GPIO.LOW 반환
         
         # 값이 다르면 None 반환 (무시)
         return None
     
-    def _handle_current_change(self, device: str, current_value: float):
-        """안정적인 전류값 변경 처리"""
-        # 이전 값과 비교하여 변경된 경우만 전송
-        if current_value != self.previous_states.get(device):
-            self.previous_states[device] = current_value
-            
-            is_running = current_value > self.threshold
+    def _handle_current_change(self, device: str, state: int):
+        """전류 상태 변경 처리"""
+        try:
             custom_logger.debug(
-                f"전류 변경 감지: {device} "
-                f"(값: {current_value}A, 상태: {'ON' if is_running else 'OFF'})"
+                f"전류 상태 변경 감지: {device} "
+                f"(상태: {'ON' if state == GPIO.HIGH else 'OFF'})"
             )
             
             # MQTT로 전송
-            self._send_mqtt_message(device, current_value)
+            self._send_mqtt_message(device, state)
             
             # WebSocket으로 전송
-            self._send_websocket_message(device, current_value)
+            self._send_websocket_message(device, state)
+            
+        except Exception as e:
+            custom_logger.error(f"전류 상태 변경 처리 실패: {str(e)}")
     
-    def _convert_to_current(self, raw_value: int) -> float:
-        """GPIO 값을 전류값으로 변환"""
-        # TODO: 실제 하드웨어에 맞게 변환 로직 구현
-        return float(raw_value)
-        
-    def _send_mqtt_message(self, device: str, value: float):
-        """MQTT로 전류값 전송"""
+    def _send_mqtt_message(self, device: str, state: int):
+        """MQTT로 전류 상태 전송"""
         try:
             topic = f"current/{device}"
             payload: MQTTPayload = {
                 "pattern": topic,
                 "data": {
                     "name": device,
-                    "value": value
+                    "value": 1 if state == GPIO.HIGH else 0
                 }
             }
             mqtt.publish_message(topic, payload)
@@ -112,14 +105,14 @@ class CurrentThread(Thread):
         except Exception as e:
             custom_logger.error(f"MQTT 메시지 전송 실패: {str(e)}")
             
-    def _send_websocket_message(self, device: str, value: float):
-        """WebSocket으로 전류값 전송"""
+    def _send_websocket_message(self, device: str, state: int):
+        """WebSocket으로 전류 상태 전송"""
         try:
             payload: WSPayload = {
                 "event": SEND_CURRENT_TO_SERVER,
                 "data": {
                     "name": device,
-                    "value": value
+                    "value": 1 if state == GPIO.HIGH else 0
                 }
             }
             
@@ -133,4 +126,4 @@ class CurrentThread(Thread):
     def stop(self):
         """모니터링 종료"""
         self.active = False
-        # GPIO.cleanup([config['pin'] for config in self.current_configs])
+        GPIO.cleanup([config['pin'] for config in self.current_configs])
