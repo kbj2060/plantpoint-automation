@@ -1,9 +1,10 @@
 import json
 import RPi.GPIO as GPIO
+import paho.mqtt.client as mqtt
 from resources import http
-from resources.mqtt import MQTTClient
 from logger.custom_logger import custom_logger
 from models.Response import SwitchResponse
+from constants import MQTT_HOST, MQTT_PORT
 
 class GPIOController:
     def __init__(self):
@@ -17,13 +18,15 @@ class GPIOController:
         try:
             # 현재 스위치 상태 조회 및 GPIO 설정
             self._init_gpio_from_http()
-            self.gpio_mqtt = MQTTClient() 
-
-            # MQTT 메시지 핸들러 등록
-            self.gpio_mqtt.client.message_callback_add('switch/#', self._on_message)
-            self.gpio_mqtt.client.unsubscribe(["current/#", "automation/#", "current/#"])
-            self.gpio_mqtt.client.on_connect = self._on_connect
-            self.gpio_mqtt.client.on_disconnect = self._on_disconnect
+            
+            # MQTT 클라이언트 초기화
+            self.client = mqtt.Client(client_id=f"gpio")
+            self.client.on_connect = self._on_connect
+            self.client.on_disconnect = self._on_disconnect
+            self.client.message_callback_add('switch/#', self._on_message)
+            
+            # MQTT 연결
+            self.client.connect(MQTT_HOST, int(MQTT_PORT))
             custom_logger.info("GPIO 컨트롤러 초기화 완료")
             
         except Exception as e:
@@ -48,10 +51,9 @@ class GPIOController:
     def loop_forever(self):
         """MQTT 루프 영구 실행"""
         try:
-            # 연결 확인 및 재연결 로직 추가
-            if not self.gpio_mqtt.client.is_connected():
-                self.gpio_mqtt.client.reconnect()
-            self.gpio_mqtt.client.loop_forever()
+            if not self.client.is_connected():
+                self.client.reconnect()
+            self.client.loop_forever()
         except Exception as e:
             custom_logger.error(f"MQTT 루프 실행 실패: {str(e)}")
             return False
@@ -88,14 +90,16 @@ class GPIOController:
         """MQTT 메시지 수신 처리"""
         try:
             topic_parts = message.topic.split('/')
-            if len(topic_parts) != 2:
+            if len_topic_parts := len(topic_parts) != 2:
+                custom_logger.warning(f"잘못된 토픽 형식: {message.topic} (parts: {len_topic_parts})")
                 return
                 
             device_name = topic_parts[1]
             if device_name not in self.initialized_pins:
+                custom_logger.warning(f"알 수 없는 디바이스: {device_name}")
                 return
                 
-            # 메시지 디코딩 추가
+            # 메시지 디코딩
             payload = message.payload
             if isinstance(payload, bytes):
                 payload = payload.decode()
@@ -110,6 +114,8 @@ class GPIOController:
                 f"(pin={pin}, status={'ON' if new_state else 'OFF'})"
             )
             
+        except json.JSONDecodeError as e:
+            custom_logger.error(f"JSON 파싱 실패: {str(e)}, payload: {payload}")
         except Exception as e:
             custom_logger.error(f"스위치 메시지 처리 실패: {str(e)}")
 
@@ -126,7 +132,8 @@ class GPIOController:
     def cleanup(self):
         """리소스 정리"""
         try:
-            self.gpio_mqtt.client.disconnect()
+            if self.client.is_connected():
+                self.client.disconnect()
             GPIO.cleanup(list(self.initialized_pins.values()))
             custom_logger.info("GPIO 컨트롤러 정리 완료")
         except Exception as e:
