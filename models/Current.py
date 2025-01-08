@@ -33,7 +33,7 @@ class CurrentThread(Thread):
         while self.active:
             try:
                 self._check_and_send_currents()
-                time.sleep(0.5)  # 1초 간격으로 체크
+                time.sleep(1)  # 1초 간격으로 체크
                 
             except Exception as e:
                 custom_logger.error(f"전류 모니터링 오류: {str(e)}")
@@ -44,7 +44,7 @@ class CurrentThread(Thread):
         for config in self.current_configs:
             try:
                 device = config['device']
-                current_state = GPIO.input(config['pin'])
+                current_state: bool = GPIO.input(config['pin']) == GPIO.HIGH
                 
                 # 버퍼에 현재 상태 추가
                 self.reading_buffer[device].append(current_state)
@@ -52,16 +52,20 @@ class CurrentThread(Thread):
                 # 버퍼가 가득 차면 처리
                 if len(self.reading_buffer[device]) >= self.BUFFER_SIZE:
                     stable_state = self._process_buffer(device)
-                    if stable_state is not None and stable_state != self.previous_states[device]:
-                        self._handle_current_change(device, stable_state)
-                        self.previous_states[device] = stable_state
+                    if stable_state is not None:
+                        if stable_state != self.previous_states[device]:
+                            self._handle_current_change(device, stable_state)
+                            self.previous_states[device] = stable_state
+                        else:
+                            self._send_websocket_message(device, stable_state)
+                    
                     # 버퍼 초기화
                     self.reading_buffer[device] = []
                     
             except Exception as e:
                 custom_logger.error(f"전류 체크 실패 (device: {config['device']}): {str(e)}")
     
-    def _process_buffer(self, device: str) -> int:
+    def _process_buffer(self, device: str) -> bool:
         """버퍼의 값들을 분석하여 안정적인 상태 반환"""
         buffer = self.reading_buffer[device]
         
