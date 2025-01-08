@@ -48,6 +48,9 @@ class GPIOController:
     def loop_forever(self):
         """MQTT 루프 영구 실행"""
         try:
+            # 연결 확인 및 재연결 로직 추가
+            if not self.gpio_mqtt.client.is_connected():
+                self.gpio_mqtt.client.reconnect()
             self.gpio_mqtt.client.loop_forever()
         except Exception as e:
             custom_logger.error(f"MQTT 루프 실행 실패: {str(e)}")
@@ -92,7 +95,12 @@ class GPIOController:
             if device_name not in self.initialized_pins:
                 return
                 
-            payload = json.loads(message.payload)
+            # 메시지 디코딩 추가
+            payload = message.payload
+            if isinstance(payload, bytes):
+                payload = payload.decode()
+            
+            payload = json.loads(payload)
             new_state = bool(payload['data']['value'])
             pin = self.initialized_pins[device_name]
             
