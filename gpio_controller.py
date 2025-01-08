@@ -1,6 +1,7 @@
 import json
 import RPi.GPIO as GPIO
-from resources import mqtt, http
+from resources import http
+from resources.gpio_mqtt import gpio_mqtt
 from logger.custom_logger import custom_logger
 from models.Response import SwitchResponse
 
@@ -18,9 +19,9 @@ class GPIOController:
             self._init_gpio_from_http()
             
             # MQTT 메시지 핸들러 등록
-            mqtt.client.message_callback_add('switch/#', self._on_message)
-            mqtt.client.on_connect = self._on_connect
-            mqtt.client.on_disconnect = self._on_disconnect
+            gpio_mqtt.client.message_callback_add('switch/#', self._on_message)
+            gpio_mqtt.client.on_connect = self._on_connect
+            gpio_mqtt.client.on_disconnect = self._on_disconnect
             custom_logger.info("GPIO 컨트롤러 초기화 완료")
             
         except Exception as e:
@@ -49,7 +50,7 @@ class GPIOController:
         """MQTT 브로커 연결"""
         try:
             if not self.connected:
-                mqtt.connect()
+                gpio_mqtt.connect()
                 custom_logger.info("MQTT 브로커 연결 시도")
             return True
         except Exception as e:
@@ -62,7 +63,7 @@ class GPIOController:
             if not self.connected:
                 if not self.connect():
                     return False
-            mqtt.run_forever()
+            gpio_mqtt.run_forever()
             return True
         except Exception as e:
             custom_logger.error(f"MQTT 루프 실행 실패: {str(e)}")
@@ -134,6 +135,7 @@ class GPIOController:
     def cleanup(self):
         """리소스 정리"""
         try:
+            gpio_mqtt.disconnect()
             GPIO.cleanup(list(self.initialized_pins.values()))
             custom_logger.info("GPIO 컨트롤러 정리 완료")
         except Exception as e:
