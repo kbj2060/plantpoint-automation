@@ -32,12 +32,10 @@ class RedisClient:
             custom_logger.error(f"Redis get 실패: {str(e)}")
             return None
 
-    def set(self, key: str, value: str, expire: int = None) -> bool:
+    def set(self, key: str, value: str) -> bool:
         """Redis에 값 저장"""
         try:
             self.client.set(key, value)
-            if expire:
-                self.client.expire(key, expire)
             custom_logger.info(f"Redis set 성공: {key}")
             return True
         except Exception as e:
@@ -68,8 +66,8 @@ redis_client = RedisClient()
 def get(key: str) -> str:
     return json.loads(redis_client.get(key))
 
-def set(key: str, value: str, expire: int = None) -> bool:
-    return redis_client.set(key, json.dumps(value, default=str), expire)
+def set(key: str, value: str) -> bool:
+    return redis_client.set(key, json.dumps(value, default=str))
 
 def delete(key: str) -> bool:
     return redis_client.delete(key)
