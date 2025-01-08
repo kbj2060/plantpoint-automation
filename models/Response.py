@@ -2,12 +2,12 @@ import datetime
 
 
 class SwitchResponse:
-    def __init__(self, machine: str, status: int):
+    def __init__(self, machine: str, status: bool):
         self.name = machine
         self.status = status
 
 class AutomationSwitchResponse:
-    def __init__(self, name: str, status: int, created_at: datetime.datetime, controlled_by: str):
+    def __init__(self, name: str, status: bool, created_at: datetime.datetime, controlled_by: str):
         self.name = name
         self.status = status
         self.created_at = created_at

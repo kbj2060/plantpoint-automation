@@ -185,7 +185,7 @@ class BaseAutomation(ABC):
                         )
                     
                     self.status = new_status
-                    redis.set(mqtt_message.topic, str(int(new_status)))
+                    redis.set(mqtt_message.topic, str(bool(new_status)))
 
         except Exception as e:
             self.logger.error(f"스위치 상태 메시지 처리 실패: {str(e)}")
