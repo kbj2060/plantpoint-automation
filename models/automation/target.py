@@ -3,7 +3,6 @@ from models.automation.base import BaseAutomation
 from models.Machine import BaseMachine
 from logger.custom_logger import custom_logger
 from models.automation.models import MQTTMessage, MQTTPayloadData, MessageHandler, SwitchMessage, TopicType
-from resources import redis
 
 class TargetAutomation(BaseAutomation):
     def __init__(self, device_id: str, category: str, active: bool, settings: dict, updated_at: str = None):
@@ -124,8 +123,6 @@ class TargetAutomation(BaseAutomation):
 
             if payload_data.data.name == self.name:
                 self.value = float(payload_data.data.value)
-                redis_key = f"environment/{self.name}"
-                redis.set(redis_key, str(self.value))
                 
                 self.logger.info(
                     f"Device {self.name}: 환경 센서값 수신 "
