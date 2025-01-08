@@ -34,7 +34,6 @@ class TargetAutomation(BaseAutomation):
             self.margin = float(settings.get('margin'))
             self.in_range_count = 0  # 초기화 시점에 0으로 설정
             self.required_count = 3  # 필요한 연속 카운트 수는 3
-            self.current_threshold = 0.1
             self.value = None
             self.logger.info(f"Target 자동화 설정 초기화: target={self.target}, margin={self.margin}")
         except (TypeError, ValueError) as e:
