@@ -12,7 +12,6 @@ from models.automation.models import (
     TopicType,
     MessageHandler
 )
-import RPi.GPIO as GPIO
 
 class BaseAutomation(ABC):
     def __init__(self, device_id: int, category: str, active: bool, settings: dict, updated_at: str):
@@ -48,11 +47,6 @@ class BaseAutomation(ABC):
         # 설정은 set_machine 이후에 초기화
         self._settings = settings  # 설정 임시 저장
 
-        # GPIO 설정
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)
-        self.gpio_initialized = False
-
     def set_machine(self, machine: BaseMachine) -> None:
         """기기 정보 설정 및 GPIO 초기화"""
         self.name = machine.name
@@ -71,21 +65,6 @@ class BaseAutomation(ABC):
         
         # 설정 초기화 (로거 설정 후)
         self._init_from_settings(self._settings)
-
-        # GPIO 설정
-        self._setup_gpio()
-
-    def _setup_gpio(self) -> None:
-        """GPIO 핀 설정"""
-        try:
-            if not self.gpio_initialized and self.pin is not None:
-                GPIO.setup(self.pin, GPIO.OUT)
-                GPIO.output(self.pin, GPIO.HIGH if self.status else GPIO.LOW)
-                self.gpio_initialized = True
-                self.logger.info(f"GPIO 설정 완료: pin={self.pin}, initial_status={'ON' if self.status else 'OFF'}")
-        except Exception as e:
-            self.logger.error(f"GPIO 설정 실패: {str(e)}")
-            raise
 
     def _setup_mqtt_subscription(self) -> None:
         """MQTT 토픽 구독 설정"""
@@ -176,13 +155,13 @@ class BaseAutomation(ABC):
             if payload_data.data.name == self.name:
                 new_status = bool(payload_data.data.value)
                 if new_status != self.status:
-                    # GPIO 제어
-                    if self.gpio_initialized:
-                        GPIO.output(self.pin, GPIO.HIGH if new_status else GPIO.LOW)
-                        self.logger.info(
-                            f"GPIO 상태 변경: pin={self.pin}, "
-                            f"status={'ON' if new_status else 'OFF'}"
-                        )
+                    # # GPIO 제어
+                    # if self.gpio_initialized:
+                    #     GPIO.output(self.pin, GPIO.HIGH if new_status else GPIO.LOW)
+                    #     self.logger.info(
+                    #         f"GPIO 상태 변경: pin={self.pin}, "
+                    #         f"status={'ON' if new_status else 'OFF'}"
+                    #     )
                     
                     self.status = new_status
                     redis.set(mqtt_message.topic, str(bool(new_status)))
@@ -234,14 +213,6 @@ class BaseAutomation(ABC):
     def update_device_status(self, new_status: bool) -> None:
         """디바이스 상태 업데이트 및 GPIO 제어"""
         try:
-            # GPIO 제어
-            if self.gpio_initialized:
-                GPIO.output(self.pin, GPIO.HIGH if new_status else GPIO.LOW)
-                self.logger.info(
-                    f"GPIO 상태 변경: pin={self.pin}, "
-                    f"status={'ON' if new_status else 'OFF'}"
-                )
-            
             self.send_mqtt_message(new_status)
             self.send_websocket_message(new_status)
             self.status = new_status
@@ -273,13 +244,3 @@ class BaseAutomation(ABC):
             self.logger.debug(f"자동화 비활성화: {self.name}")
 
         return self.get_machine() 
-
-    def __del__(self):
-        """객체 소멸 시 GPIO 정리"""
-        if hasattr(self, 'gpio_initialized') and self.gpio_initialized:
-            try:
-                GPIO.cleanup(self.pin)
-                self.logger.info(f"GPIO 정리 완료: pin={self.pin}")
-            except Exception as e:
-                self.logger.error(f"GPIO 정리 실패: {str(e)}") 
-        
