@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import os
 
 # .env 파일 로드
-load_dotenv('.env.development')
+load_dotenv('.env')
 
 # 환경 변수 사용
 USERNAME = os.getenv('USERNAME')
@@ -20,7 +20,7 @@ SWITCH_SOCKET_ADDRESS = os.getenv('SWITCH_SOCKET_ADDRESS')
 CURRENT_SOCKET_ADDRESS = os.getenv('CURRENT_SOCKET_ADDRESS')
 SOCKET_ADDRESS = os.getenv('SOCKET_ADDRESS')
 WS_SWITCH_EVENT = os.getenv('WS_SWITCH_EVENT')
-WS_CURRENT_EVENT = os.getenv('WS_SWITCH_EVENT')
+WS_CURRENT_EVENT = os.getenv('WS_CURRENT_EVENT')
 
 MQTT_HOST = os.getenv('MQTT_HOST')
 MQTT_PORT = os.getenv('MQTT_PORT')

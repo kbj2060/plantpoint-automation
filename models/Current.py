@@ -4,7 +4,7 @@ import RPi.GPIO as GPIO
 from typing import Dict, List
 from collections import defaultdict
 from resources import mqtt, ws
-from constants import CURRENT_SOCKET_ADDRESS, SEND_CURRENT_TO_SERVER
+from constants import CURRENT_SOCKET_ADDRESS,WS_CURRENT_EVENT 
 from logger.custom_logger import custom_logger
 from models.Message import WSPayload, MQTTPayload
 
@@ -21,7 +21,7 @@ class CurrentThread(Thread):
         GPIO.setmode(GPIO.BCM)
         for config in current_configs:
             GPIO.setup(config['pin'], GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-            self.previous_states[config['device']] = GPIO.LOW
+            self.previous_states[config['device']] = config['current']
             
         self.daemon = True
         
@@ -109,10 +109,9 @@ class CurrentThread(Thread):
         """WebSocket으로 전류 상태 전송"""
         try:
             payload: WSPayload = {
-                "event": SEND_CURRENT_TO_SERVER,
+                "event": WS_CURRENT_EVENT,
                 "data": {
-                    "name": device,
-                    "value": 1 if state == GPIO.HIGH else 0
+                    device: 1 if state == GPIO.HIGH else 0
                 }
             }
             
