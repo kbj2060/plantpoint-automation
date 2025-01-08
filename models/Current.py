@@ -33,7 +33,7 @@ class CurrentThread(Thread):
         while self.active:
             try:
                 self._check_and_send_currents()
-                time.sleep(1)  # 1초 간격으로 체크
+                time.sleep(0.5)  # 1초 간격으로 체크
                 
             except Exception as e:
                 custom_logger.error(f"전류 모니터링 오류: {str(e)}")
@@ -97,7 +97,7 @@ class CurrentThread(Thread):
                 "pattern": topic,
                 "data": {
                     "name": device,
-                    "value": 1 if state == GPIO.HIGH else 0
+                    "value": True if state == GPIO.HIGH else False
                 }
             }
             mqtt.publish_message(topic, payload)
@@ -111,7 +111,7 @@ class CurrentThread(Thread):
             payload: WSPayload = {
                 "event": WS_CURRENT_EVENT,
                 "data": {
-                    device: 1 if state == GPIO.HIGH else 0
+                    device: True if state == GPIO.HIGH else False
                 }
             }
             
