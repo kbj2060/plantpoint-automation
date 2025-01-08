@@ -7,6 +7,7 @@ from models.Response import SwitchResponse
 class GPIOController:
     def __init__(self):
         self.initialized_pins = {}  # name: pin 매핑
+        self.connected = False
         
         # GPIO 초기화
         GPIO.setmode(GPIO.BCM)
@@ -18,16 +19,59 @@ class GPIOController:
             
             # MQTT 메시지 핸들러 등록
             mqtt.client.message_callback_add('switch/#', self._on_message)
+            mqtt.client.on_connect = self._on_connect
+            mqtt.client.on_disconnect = self._on_disconnect
             custom_logger.info("GPIO 컨트롤러 초기화 완료")
             
         except Exception as e:
             custom_logger.error(f"초기화 실패: {str(e)}")
             raise
 
+    def _on_connect(self, client, userdata, flags, rc):
+        """MQTT 연결 콜백"""
+        if rc == 0:
+            self.connected = True
+            custom_logger.info("MQTT 브로커 연결 성공")
+            client.subscribe("switch/#")
+        else:
+            self.connected = False
+            custom_logger.error(f"MQTT 연결 실패 (code: {rc})")
+
+    def _on_disconnect(self, client, userdata, rc):
+        """MQTT 연결 해제 콜백"""
+        self.connected = False
+        if rc != 0:
+            custom_logger.warning("MQTT 브로커 연결이 예기치 않게 종료됨")
+        else:
+            custom_logger.info("MQTT 브로커 연결 종료")
+
+    def connect(self):
+        """MQTT 브로커 연결"""
+        try:
+            if not self.connected:
+                mqtt.connect()
+                custom_logger.info("MQTT 브로커 연결 시도")
+            return True
+        except Exception as e:
+            custom_logger.error(f"MQTT 연결 실패: {str(e)}")
+            return False
+
+    def loop_forever(self):
+        """MQTT 루프 영구 실행"""
+        try:
+            if not self.connected:
+                if not self.connect():
+                    return False
+            mqtt.run_forever()
+            return True
+        except Exception as e:
+            custom_logger.error(f"MQTT 루프 실행 실패: {str(e)}")
+            return False
+
     def _init_gpio_from_http(self):
         """HTTP에서 현재 스위치 상태 조회하여 GPIO 초기화"""
         try:
-            # 스위치 상태�� machine 정보 조회
+            # 스위치 상태와 machine 정보 조회
             switches = {
                 switch.name: switch 
                 for switch in [SwitchResponse(**s) for s in http.get_switches()]
@@ -81,7 +125,7 @@ class GPIOController:
         """GPIO 컨트롤러 실행"""
         try:
             custom_logger.info("GPIO 컨트롤러 시작")
-            mqtt.run_forever()  # MQTT 클라이언트 영구 실행
+            self.loop_forever()
         except KeyboardInterrupt:
             custom_logger.info("GPIO 컨트롤러 종료")
         finally:

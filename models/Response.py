@@ -2,9 +2,11 @@ import datetime
 
 
 class SwitchResponse:
-    def __init__(self, machine: str, status: bool):
-        self.name = machine
+    def __init__(self, device_id: int, name: str, status: bool, created_at: datetime.datetime):
+        self.device_id = device_id
+        self.name = name
         self.status = status
+        self.created_at = created_at
 
 class AutomationSwitchResponse:
     def __init__(self, name: str, status: bool, created_at: datetime.datetime, controlled_by: str):
