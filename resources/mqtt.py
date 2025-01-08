@@ -6,7 +6,7 @@ from constants import MQTT_HOST, MQTT_PORT, MQTT_ID
 
 class MQTTClient:
     def __init__(self):
-        self.client = mqtt.Client(client_id=MQTT_ID)
+        self.client = mqtt.Client()
         self.client.on_connect = self.on_connect
         self.client.on_disconnect = self.on_disconnect
         
