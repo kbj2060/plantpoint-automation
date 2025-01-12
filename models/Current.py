@@ -3,7 +3,7 @@ import time
 import RPi.GPIO as GPIO
 from typing import Dict, List
 from collections import defaultdict
-from resources import mqtt, ws
+from resources import mqtt
 from constants import CURRENT_SOCKET_ADDRESS,WS_CURRENT_EVENT 
 from logger.custom_logger import custom_logger
 from models.Message import WSPayload, MQTTPayload
@@ -57,6 +57,7 @@ class CurrentThread(Thread):
                             self._handle_current_change(device, stable_state)
                             self.previous_states[device] = stable_state
                         else:
+                            # 웹소켓은 꾸준히 보내줘야 새로고침해도 사이트에 표시됨
                             self._send_websocket_message(device, stable_state)
                     
                     # 버퍼 초기화
@@ -88,7 +89,7 @@ class CurrentThread(Thread):
             self._send_mqtt_message(device, state)
             
             # WebSocket으로 전송
-            self._send_websocket_message(device, state)
+            # self._send_websocket_message(device, state)
             
         except Exception as e:
             custom_logger.error(f"전류 상태 변경 처리 실패: {str(e)}")

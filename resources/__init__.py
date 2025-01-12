@@ -1,7 +1,6 @@
 from resources.mqtt import MQTTClient
 from resources.websocket import WebSocket
 from resources.http import HTTP
-from constants import SWITCH_SOCKET_ADDRESS, CURRENT_SOCKET_ADDRESS
 
 
 # 리소스 인스턴스 생성
