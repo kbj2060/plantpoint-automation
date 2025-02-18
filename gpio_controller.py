@@ -1,11 +1,16 @@
 import json
-import RPi.GPIO as GPIO
 import paho.mqtt.client as mqtt
 from resources import http
 from logger.custom_logger import custom_logger
 from models.Response import SwitchResponse
 from constants import MQTT_HOST, MQTT_PORT
+import sys
 
+if sys.platform != "linux":
+    from fake_rpi.RPi import GPIO
+else:
+    import RPi.GPIO as GPIO
+    
 class GPIOController:
     def __init__(self):
         self.initialized_pins = {}  # name: pin 매핑

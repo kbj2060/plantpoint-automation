@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import os
 
 # .env 파일 로드
-load_dotenv('.env')
+load_dotenv('.env.development')
 
 # 환경 변수 사용
 USERNAME = os.getenv('USERNAME')

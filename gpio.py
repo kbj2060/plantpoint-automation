@@ -1,4 +1,10 @@
-import RPi.GPIO as GPIO
+import sys
+
+if sys.platform != "linux":
+    from fake_rpi.RPi import GPIO
+else:
+    import RPi.GPIO as GPIO
+    
 import time
 
 # GPIO 모드 설정 (BCM 또는 BOARD)
