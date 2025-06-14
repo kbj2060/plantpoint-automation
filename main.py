@@ -2,6 +2,7 @@ from pprint import pprint
 from logger.custom_logger import custom_logger
 from managers.automation_manager import AutomationManager
 from managers.current_manager import CurrentManager
+from managers.nutrient_manager import NutrientManager
 from managers.thread_manager import ThreadManager
 from managers.resource_manager import ResourceManager
 from store import Store
@@ -30,6 +31,11 @@ def main():
         current_manager = CurrentManager(store, thread_manager)
         if not current_manager.initialize():
             custom_logger.warning("전류 모니터링 초기화 실패")
+            
+        # NutrientManager 초기화 및 실행
+        nutrient_manager = NutrientManager(store, thread_manager)
+        if not nutrient_manager.initialize():
+            custom_logger.info("양액 모니터링 초기화 실패")
             
         # 자동화 실행
         automation_manager.run()
