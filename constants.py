@@ -2,7 +2,9 @@ from dotenv import load_dotenv
 import os
 
 # .env 파일 로드
-load_dotenv('.env.development')
+load_dotenv('.env')
+
+USE_REAL_GPIO = os.environ.get('USE_REAL_GPIO', 'true').lower() == 'true'
 
 # 환경 변수 사용
 USERNAME = os.getenv('USERNAME')

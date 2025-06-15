@@ -1,6 +1,6 @@
-import sys
+from constants import USE_REAL_GPIO
 
-if sys.platform != "linux":
+if not USE_REAL_GPIO:
     from fake_rpi.RPi import GPIO
 else:
     import RPi.GPIO as GPIO

@@ -3,10 +3,9 @@ import paho.mqtt.client as mqtt
 from resources import http
 from logger.custom_logger import custom_logger
 from models.Response import SwitchResponse
-from constants import MQTT_HOST, MQTT_PORT
-import sys
+from constants import MQTT_HOST, MQTT_PORT, USE_REAL_GPIO
 
-if sys.platform != "linux":
+if not USE_REAL_GPIO:
     from fake_rpi.RPi import GPIO
 else:
     import RPi.GPIO as GPIO

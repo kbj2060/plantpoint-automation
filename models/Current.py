@@ -3,12 +3,12 @@ import time
 from typing import Dict, List
 from collections import defaultdict
 from resources import mqtt
-from constants import CURRENT_SOCKET_ADDRESS,WS_CURRENT_EVENT 
+from constants import CURRENT_SOCKET_ADDRESS,WS_CURRENT_EVENT, USE_REAL_GPIO
 from logger.custom_logger import custom_logger
 from models.Message import WSPayload, MQTTPayload
-import sys
 
-if sys.platform != "linux":
+
+if not USE_REAL_GPIO:
     from fake_rpi.RPi import GPIO
 else:
     import RPi.GPIO as GPIO

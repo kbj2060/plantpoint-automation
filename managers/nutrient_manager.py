@@ -3,9 +3,9 @@ from models.sensors import PhSensor, EcSensor, TemperatureSensor
 from models.actuators import MagneticFan, DosingPump
 from managers.thread_manager import ThreadManager
 import threading
-import sys
+from constants import USE_REAL_GPIO
 
-if sys.platform != "linux":
+if not USE_REAL_GPIO:
     from fake_rpi.RPi import GPIO
 else:
     import RPi.GPIO as GPIO

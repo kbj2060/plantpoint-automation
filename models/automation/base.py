@@ -103,10 +103,10 @@ class BaseAutomation(ABC):
             # 해당하는 핸들러 실행
             handler = self.message_handlers.get(topic_type)
             if handler:
-                self.logger.debug(
-                    f"메시지 핸들러 실행: {handler.description} "
-                    f"(토픽: {topic_type.value})"
-                )
+                # self.logger.debug(
+                #     f"메시지 핸들러 실행: {handler.description} "
+                #     f"(토픽: {topic_type.value})"
+                # )
                 handler.handler(mqtt_message)
 
         except Exception as e:

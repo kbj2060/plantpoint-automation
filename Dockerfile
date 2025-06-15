@@ -1,6 +1,12 @@
 # 베이스 이미지 선택
 FROM python:3.13-slim
 
+# GPIO 사용 여부를 선택하는 ARG 추가
+# 실제 GPIO 사용 (라즈베리파이): docker build -t kbj2060/plantpoint-automation:latest .
+# GPIO 모의 사용 (맥 등): docker build --build-arg USE_REAL_GPIO=false -t kbj2060/plantpoint-automation:latest .
+ARG USE_REAL_GPIO=true
+ENV USE_REAL_GPIO=${USE_REAL_GPIO}
+
 # 필수 패키지 설치
 RUN apt-get update && apt-get install -y \
     build-essential \

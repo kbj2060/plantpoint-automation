@@ -26,7 +26,7 @@ class MQTTClient:
                 ("automation/#", 0),
                 ("switch/#", 0),
             ])
-            custom_logger.info("MQTT 토픽 구독: environment/#, automation/#, current/#, switch/#")
+            custom_logger.info("MQTT 토픽 구독: environment/#, automation/#, switch/#")
         else:
             custom_logger.error(f"MQTT 브로커 연결 실패 (code: {rc})")
 
