@@ -30,7 +30,7 @@ class CurrentManager:
         try:
             current_thread = CurrentThread(self.store.currents)
             current_thread.start()
-            self.thread_manager.current_threads['monitor'] = current_thread
+            # self.thread_manager.current_threads['monitor'] = current_thread
             custom_logger.info("전류 모니터링 스레드 시작")
             
         except Exception as e:

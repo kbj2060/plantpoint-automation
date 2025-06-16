@@ -8,6 +8,7 @@ from threading import Event
 class ThreadManager:
     def __init__(self):
         self.automation_threads: List[threading.Thread] = []
+        self.nutrient_threads: List[threading.Thread] = []
         self.current_threads: Dict[str, CurrentThread] = {}
         self.stop_event = Event()
 
@@ -31,15 +32,21 @@ class ThreadManager:
             daemon=True
         )
 
-    def start_current_thread(self, device_name: str, pin: int):
-        """전류 모니터링 스레드 시작"""
-        try:
-            current_thread = CurrentThread(device_name=device_name, pin=pin)
-            current_thread.start()
-            self.current_threads[device_name] = current_thread
-            custom_logger.info(f"전류 모니터링 스레드 시작: {device_name}")
-        except Exception as e:
-            custom_logger.error(f"전류 모니터링 스레드 시작 실패 ({device_name}): {str(e)}")
+    def create_nutrient_thread(self, nutrient_manager) -> threading.Thread:
+        """영양소 스레드 생성"""
+        def run_nutrient():
+            try:
+                while not self.stop_event.is_set():
+                    nutrient_manager.adjust_nutrients()
+                    self.stop_event.wait(60)
+            except Exception as e:
+                custom_logger.error(f"영양소 스레드 오류 발생: {str(e)}")
+
+        return threading.Thread(
+            target=run_nutrient,
+            name="NutrientControl",
+            daemon=True
+        )
 
     def monitor_threads(self):
         """스레드 상태 모니터링"""
@@ -53,20 +60,31 @@ class ThreadManager:
 
     def stop_automation_threads(self):
         """자동화 스레드만 종료"""
+        self.stop_event.set()
         for thread in self.automation_threads:
             if thread.is_alive():
-                thread.stop()
+                thread.join()
         self.automation_threads.clear()
+
+    def stop_nutrient_threads(self):
+        """영양소 스레드만 종료"""
+        self.stop_event.set()
+        for thread in self.nutrient_threads:
+            if thread.is_alive():
+                thread.join()
+        self.nutrient_threads.clear()
 
     def stop_current_threads(self):
         """전류 모니터링 스레드만 종료"""
+        self.stop_event.set()
         for thread in self.current_threads.values():
             if thread.is_alive():
-                thread.stop()
+                thread.join()
         self.current_threads.clear()
 
     def stop_all(self):
         """모든 스레드 종료"""
         self.stop_event.set()
         self.stop_automation_threads()
-        self.stop_current_threads() 
+        self.stop_current_threads()
+        self.stop_nutrient_threads() 
