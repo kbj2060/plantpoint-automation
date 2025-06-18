@@ -40,7 +40,7 @@ class HTTP:
     def get_environments(self) -> list:
         return self._get_request(ENVIRONMENT_EACH_LATEST_READ_URL)
 
-    def get_environment_types(self) -> list:
+    def get_environment_type(self) -> list:
         return self._get_request(ENVIRONMENT_TYPE_READ_URL)
 
     def get_switches(self) -> list:

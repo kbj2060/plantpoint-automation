@@ -43,13 +43,14 @@ class Store:
     def __init__(self):
         try:
             # HTTP에서 데이터 가져오기
-            self.environment_types: List[EnvironmentTypeResponse] = http.get_environment_types()
+            self.environment_type: List[EnvironmentTypeResponse] = http.get_environment_type()
             self.environments: List[EnvironmentResponse] = http.get_environments()
             self.switches: List[SwitchResponse] = http.get_switches()
             self.machines: List[MachineResponse] = http.get_machines()
             self.sensors: List[SensorResponse] = http.get_sensors()
             self.automations: List[AutomationResponse] = http.get_automations()
             self.interval_automated_switches: List[AutomationSwitchResponse] = http.get_interval_device_states()
+            print(self.interval_automated_switches)
             self.currents: List[CurrentResponse] = http.get_currents()
 
             custom_logger.info(f"Store 데이터 로드 완료:")
@@ -72,7 +73,7 @@ class Store:
         """데이터를 Redis에 저장"""
         try:
             # 각 데이터 타입별로 저장
-            redis.set('environment_types', self.environment_types)
+            redis.set('environment_type', self.environment_type)
             redis.set('environments', self.environments)
             redis.set('switches', self.switches)
             redis.set('machines', self.machines)
