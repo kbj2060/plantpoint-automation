@@ -16,32 +16,6 @@ class NutrientManager:
         self.thread_manager = thread_manager
         self.nutrient_thread = None
 
-        # 센서 및 액추에이터 초기화
-        self.temp_sensor = TemperatureSensor(self._get_sensor_pin('water_temperature'))
-        self.ph_sensor = PhSensor(self._get_sensor_pin('ph'))
-        self.ec_sensor = EcSensor(self._get_sensor_pin('ec'))
-        self.ph_mixer = MagneticFan(self._get_machine_pin('ph_mixer'))
-        self.ec_mixer = MagneticFan(self._get_machine_pin('ec_mixer'))
-        self.ph_pump = DosingPump(self._get_machine_pin('ph'))
-        self.ec_pump = DosingPump(self._get_machine_pin('ec'))
-
-        # 목표 pH, EC, 온도 설정
-        self.target_ph = self._get_automation_setting('ph', 7.0)  # 기본값 7.0
-        self.target_ec = self._get_automation_setting('ec', 1.5)
-        self.target_temp = self._get_automation_setting('temperature', 25.0)
-
-    def _get_machine_pin(self, name):
-        machine = next((m for m in self.store.machines if m.name == name), None)
-        return machine.pin if machine else None
-
-    def _get_sensor_pin(self, name):
-        sensor = next((s for s in self.store.sensors if s['name'] == name), None)
-        return sensor['pin'] if sensor else None
-
-    def _get_automation_setting(self, key, default):
-        automation = next((a for a in self.store.automations if key in a['settings']), None)
-        return automation['settings'][key] if automation else default
-
     def initialize(self) -> bool:
         """영양소 매니저 초기화"""
         try:
@@ -55,32 +29,10 @@ class NutrientManager:
     def _start_nutrient_threads(self):
         """pH, EC, 온도 각각에 대해 스레드 생성 및 시작"""
         try:
-            ph_thread = threading.Thread(target=self._ph_control_loop, name="Nutrient-pH", daemon=True)
-            ec_thread = threading.Thread(target=self._ec_control_loop, name="Nutrient-EC", daemon=True)
-            temp_thread = threading.Thread(target=self._temp_control_loop, name="Nutrient-Temp", daemon=True)
-            ph_thread.start()
-            ec_thread.start()
-            temp_thread.start()
-            self.thread_manager.nutrient_threads.extend([ph_thread, ec_thread, temp_thread])
             custom_logger.info("pH, EC, 온도 조절 스레드 시작")
         except Exception as e:
             custom_logger.error(f"영양소 조절 스레드 시작 실패: {str(e)}")
             raise
-
-    def _ph_control_loop(self):
-        while not self.thread_manager.stop_event.is_set():
-            self.adjust_ph()
-            self.thread_manager.stop_event.wait(60)
-
-    def _ec_control_loop(self):
-        while not self.thread_manager.stop_event.is_set():
-            self.adjust_ec()
-            self.thread_manager.stop_event.wait(60)
-
-    def _temp_control_loop(self):
-        while not self.thread_manager.stop_event.is_set():
-            self.adjust_temp()
-            self.thread_manager.stop_event.wait(60)
 
     def adjust_ph(self):
         # ph = self.ph_sensor.read()
@@ -136,20 +88,3 @@ class NutrientManager:
         self.pump.stop_all()
         GPIO.cleanup()
         custom_logger.info("Nutrient Manager 종료 및 리소스 정리 완료")
-
-    def _start_monitoring(self):
-        pass  # 더 이상 사용하지 않음
-
-    def _monitor_nutrients(self):
-        pass  # 더 이상 사용하지 않음
-
-    def read_sensors(self):
-        """센서 데이터 읽기"""
-        ph = self.ph_sensor.read()
-        ec = self.ec_sensor.read()
-        temp = self.temp_sensor.read()
-        custom_logger.info(f"센서 데이터: pH={ph}, EC={ec}, Temp={temp}")
-        return ph, ec, temp
-    def adjust_nutrients(self):
-        pass  # 더 이상 사용하지 않음
-

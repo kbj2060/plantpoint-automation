@@ -14,7 +14,7 @@ from models.automation.models import (
 )
 
 class BaseAutomation(ABC):
-    def __init__(self, device_id: int, category: str, active: bool, settings: dict, updated_at: str):
+    def __init__(self, device_id: int, category: str, active: bool, updated_at: str, settings: dict):
         self.device_id = device_id
         self.category = category
         self.active = active
@@ -26,7 +26,6 @@ class BaseAutomation(ABC):
         self.switch_created_at: Optional[str] = None
         self.mqtt_subscribed = False
         self.sensor_name: Optional[str] = None
-        
         # 임시 로거 생성 (초기화 단계용)
         self.logger = CustomLogger()
                 
@@ -43,9 +42,8 @@ class BaseAutomation(ABC):
                 description="스위치 상태 메시지 처리"
             )
         }
+        self._settings = settings
         
-        # 설정은 set_machine 이후에 초기화
-        self._settings = settings  # 설정 임시 저장
 
     def set_machine(self, machine: BaseMachine) -> None:
         """기기 정보 설정 및 GPIO 초기화"""
@@ -112,9 +110,16 @@ class BaseAutomation(ABC):
         except Exception as e:
             self.logger.error(f"MQTT 메시지 처리 실패: {str(e)}")
 
+    def filter_settings_dict(self, data: dict) -> dict:
+        """
+        id, active, updated_at 키를 제거한 settings 딕셔너리 반환
+        """
+        return {k: v for k, v in data.items() if k not in ('id', 'active', 'updated_at')}
+    
     def _handle_automation_message(self, mqtt_message: MQTTMessage) -> None:
         """자동화 설정 메시지 처리"""
         try:
+            print(mqtt_message)
             payload_data = MQTTPayloadData(
                 pattern=mqtt_message.topic,
                 data=SwitchMessage(
@@ -126,8 +131,8 @@ class BaseAutomation(ABC):
             if payload_data.data.name == self.name:
                 # 자동화 설정 업데이트
                 self.active = payload_data.data.value.get('active', False)
-                new_settings = payload_data.data.value.get('settings', {})
-                
+                new_settings = self.filter_settings_dict(payload_data.data.value)
+
                 if new_settings:
                     self._init_from_settings(new_settings)
                     self.control()

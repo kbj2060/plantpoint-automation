@@ -39,12 +39,12 @@ class AutomationManager:
                     (m for m in self.store.machines if m.machine_id == automation.device_id), 
                     None
                 )
-                
+
                 if not machine:
                     custom_logger.error(f"Device ID {automation.device_id}에 해당하는 machine을 찾을 수 없습니다.")
                     continue
 
-                custom_logger.info(f"{machine.name} / {automation_data['category']} /{automation_data['settings']}")
+                custom_logger.info(f"{machine.name} / {automation.category} /{automation.settings}")
                 automation.set_machine(machine)
                 
                 thread = self.thread_manager.create_automation_thread(automation)

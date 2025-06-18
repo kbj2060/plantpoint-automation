@@ -2,7 +2,7 @@ from threading import Thread
 import time
 from typing import Dict, List
 from collections import defaultdict
-from resources import mqtt
+from resources import mqtt, ws
 from constants import CURRENT_SOCKET_ADDRESS,WS_CURRENT_EVENT, USE_REAL_GPIO
 from logger.custom_logger import custom_logger
 from models.Message import WSPayload, MQTTPayload

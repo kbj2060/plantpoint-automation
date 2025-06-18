@@ -45,23 +45,6 @@ class IntervalState:
     def __init__(self, device_state: Dict = None):
         self.last_toggle_time = None
         self.timers = TimerManager()
-        
-        if device_state:
-            self._init_from_device_state(device_state)
-
-    def _init_from_device_state(self, device_state: Dict) -> None:
-        """Redis 상태로부터 초기화"""
-        on_state = device_state.get('on_state')
-        off_state = device_state.get('off_state')
-
-        if on_state and off_state:
-            on_time = self._parse_datetime(on_state['created_at'])
-            off_time = self._parse_datetime(off_state['created_at'])
-            self.last_toggle_time = max(on_time, off_time)
-        elif on_state:
-            self.last_toggle_time = self._parse_datetime(on_state['created_at'])
-        elif off_state:
-            self.last_toggle_time = self._parse_datetime(off_state['created_at'])
 
     def _parse_datetime(self, date_str: str) -> datetime:
         """UTC 시간 파싱"""
@@ -78,9 +61,10 @@ class IntervalState:
         self.last_toggle_time = None
 
 class IntervalAutomation(BaseAutomation):
-    def __init__(self, device_id: str, category: str, active: bool, settings: dict, updated_at: str = None):
+    def __init__(self, device_id: str, category: str, active: bool, duration: str, interval: str, updated_at: str = None):
+        self.settings = { 'duration': duration, 'interval': interval }
         """Interval 자동화 초기화"""
-        super().__init__(device_id, category, active, settings, updated_at)
+        super().__init__(device_id, category, active, updated_at, self.settings)
 
         self.state = IntervalState()  # 상태 초기화
 
@@ -89,20 +73,18 @@ class IntervalAutomation(BaseAutomation):
         try:
             duration_settings = settings.get('duration', {})
             interval_settings = settings.get('interval', {})
-            
+
             self.duration = TimeConfig(
-                value=duration_settings.get('value', 0),
-                unit=duration_settings.get('unit', 's')
+                duration_settings
             ).to_seconds()
             
             self.interval = TimeConfig(
-                value=interval_settings.get('value', 0),
-                unit=interval_settings.get('unit', 's')
+                interval_settings
             ).to_seconds()
             
             self.logger.info(
                 f"Interval 자동화 설정 초기화: "
-                f"duration={self.duration}s, interval={self.interval}s"
+                f"duration={duration_settings}, interval={interval_settings}"
             )
             
         except Exception as e:
@@ -189,48 +171,44 @@ class IntervalAutomation(BaseAutomation):
         )
 
     def _handle_first_run(self, current_time: datetime) -> BaseMachine:
-        """첫 실행 처리 - Redis의 마지막 상태와 경과 시간 기준"""
+        """첫 실행 처리 - Redis의 마지막 상태와 경과 시간 기준 (status True/False 기반)"""
         try:
             # Redis에서 interval 상태 가져오기
             interval_states = redis.get('interval_automated_switches') or []
-            device_state = next(
-                (state for state in interval_states if state['name'] == self.name),
-                None
-            )
+
+            device_name = self.name
+            # name이 같은 ON/OFF 상태를 각각 찾기
+            on_state = next((s for s in interval_states if s['name'] == device_name and s.get('status') is True), None)
+            off_state = next((s for s in interval_states if s['name'] == device_name and s.get('status') is False), None)
 
             # 상태 초기화
-            self.state = IntervalState() if not self.state else self.state
+            self.state = IntervalState()
 
-            if device_state:
-                # 마지막 ON/OFF 상태 확인
-                last_on = device_state.get('on_state', {}).get('created_at')
-                last_off = device_state.get('off_state', {}).get('created_at')
+            if on_state or off_state:
+                last_on = on_state['created_at'] if on_state else None
+                last_off = off_state['created_at'] if off_state else None
 
                 if last_on and last_off:
-                    # 시간 파싱 (UTC naive datetime으로 변환)
                     on_time = self.state._parse_datetime(last_on)
                     off_time = self.state._parse_datetime(last_off)
-                    
-                    # 더 최근 상태와 경과 시간 계산
                     if on_time > off_time:
-                        # 마지막 상태가 ON인 경우
                         self.state.update_toggle_time(on_time)
-                        # duration 타이머 시작
+                        self.update_device_status(True)
                         self._schedule_off_timer()
                     else:
-                        # 마지막 상태가 OFF인 경우
                         self.state.update_toggle_time(off_time)
-                        # interval 타이머 시작
+                        self.update_device_status(False)
                         self._schedule_on_timer()
-                else:
-                    # 둘 중 하나만 있는 경우
-                    initial_status = bool(last_on)
-                    last_time = self.state._parse_datetime(last_on or last_off)
-                    self.state.update_toggle_time(last_time)
-                    if initial_status:
-                        self._schedule_off_timer()
-                    else:
-                        self._schedule_on_timer()
+                elif last_on:
+                    on_time = self.state._parse_datetime(last_on)
+                    self.state.update_toggle_time(on_time)
+                    self.update_device_status(True)
+                    self._schedule_off_timer()
+                elif last_off:
+                    off_time = self.state._parse_datetime(last_off)
+                    self.state.update_toggle_time(off_time)
+                    self.update_device_status(False)
+                    self._schedule_on_timer()
             else:
                 # 상태 기록이 없는 경우 OFF로 시작
                 self.update_device_status(False)

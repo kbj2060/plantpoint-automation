@@ -5,8 +5,9 @@ from logger.custom_logger import custom_logger
 from models.automation.models import MQTTMessage, MQTTPayloadData, MessageHandler, SwitchMessage, TopicType
 
 class TargetAutomation(BaseAutomation):
-    def __init__(self, device_id: str, category: str, active: bool, settings: dict, updated_at: str = None):
-        super().__init__(device_id, category, active, settings, updated_at)
+    def __init__(self, device_id: str, category: str, active: bool, target: float, margin: float, updated_at: str = None):
+        self.settings = { 'target': target, 'margin': margin }
+        super().__init__(device_id, category, active, updated_at, self.settings)
         
         self.message_handlers = {
             TopicType.AUTOMATION: MessageHandler(

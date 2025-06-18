@@ -1,13 +1,29 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, Tuple, Dict, Any, Union, Callable
 from enum import Enum
+import re
 
 @dataclass
 class TimeConfig:
-    """시간 설정을 관리하는 클래스"""
-    value: int
-    unit: str = 's'
+    """시간 설정을 관리하는 클래스 (문자열 '1m', '30s' 등도 지원)"""
+    value: int = field(default=0)
+    unit: str = field(default='s')
+
+    def __init__(self, value):
+        if isinstance(value, str):
+            # 문자열 파싱: 예) '1m', '30s', '2h'
+            match = re.match(r"^(\d+)([smhd])$", value.strip())
+            if match:
+                self.value = int(match.group(1))
+                self.unit = match.group(2)
+            else:
+                # 파싱 실패시 기본값
+                self.value = 0
+                self.unit = 's'
+        else:
+            self.value = value if value is not None else 0
+            self.unit = 's'
 
     def to_seconds(self) -> int:
         """시간 단위를 초 단위로 변환"""

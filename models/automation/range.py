@@ -37,16 +37,17 @@ class RangeTimerManager:
         self._end_timer = None
 
 class RangeAutomation(BaseAutomation):
-    def __init__(self, device_id: int, category: str, active: bool, settings: dict, updated_at: str):
-        super().__init__(device_id, category, active, settings, updated_at)
+    def __init__(self, device_id: int, category: str, active: bool, start_time: str, end_time: str, updated_at: str):
+        self.settings = { 'start_time': start_time, 'end_time': end_time }
+        super().__init__(device_id, category, active, updated_at, self.settings)
 
         self.timers = RangeTimerManager()
 
     def _init_from_settings(self, settings: dict) -> None:
         """Range 설정 초기화"""
         try:
-            self.start_time = settings.get('start', '00:00')
-            self.end_time = settings.get('end', '00:00')
+            self.start_time = settings.get('start_time', '00:00')
+            self.end_time = settings.get('end_time', '00:00')
             
             self.logger.info(
                 f"Range 자동화 설정 초기화: "
