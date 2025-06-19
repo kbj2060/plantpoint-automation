@@ -50,6 +50,8 @@ def main():
             current_manager.stop()
         if 'automation_manager' in locals():
             automation_manager.stop()
+        if 'nutrient_manager' in locals():
+            nutrient_manager.stop()
         if 'resource_manager' in locals():
             resource_manager.cleanup()
 

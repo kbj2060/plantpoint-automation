@@ -1,6 +1,4 @@
 from logger.custom_logger import custom_logger
-from models.sensors import PhSensor, EcSensor, TemperatureSensor
-from models.actuators import MagneticFan, DosingPump
 from managers.thread_manager import ThreadManager
 import threading
 from constants import USE_REAL_GPIO
@@ -29,7 +27,7 @@ class NutrientManager:
     def _start_nutrient_threads(self):
         """pH, EC, 온도 각각에 대해 스레드 생성 및 시작"""
         try:
-            custom_logger.info("pH, EC, 온도 조절 스레드 시작")
+            custom_logger.info("pH, EC, 수온 조절 스레드 시작")
         except Exception as e:
             custom_logger.error(f"영양소 조절 스레드 시작 실패: {str(e)}")
             raise

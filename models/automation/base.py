@@ -80,10 +80,10 @@ class BaseAutomation(ABC):
                 mqtt.client.message_callback_add(self.switch_topic, self._on_mqtt_message)
                 
                 self.mqtt_subscribed = True
-                self.logger.info(
-                    f"MQTT 콜백 등록 성공: {self.automation_topic}, "
-                    f"{self.sensor_topic}, {self.switch_topic}"
-                )
+                # self.logger.info(
+                #     f"MQTT 콜백 등록 성공: {self.automation_topic}, "
+                #     f"{self.sensor_topic}, {self.switch_topic}"
+                # )
         except Exception as e:
             self.logger.error(f"MQTT 콜백 등록 실패: {str(e)}")
 
