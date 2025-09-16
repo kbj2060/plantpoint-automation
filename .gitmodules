@@ -1,0 +1,15 @@
+[submodule "plantpoint-arduino"]
+	path = plantpoint-arduino
+	url = https://github.com/kbj2060/plantpoint-arduino.git
+[submodule "plantpoint-automation"]
+	path = plantpoint-automation
+	url = https://github.com/kbj2060/plantpoint-automation.git
+[submodule "plantpoint-backend"]
+	path = plantpoint-backend
+	url = https://github.com/kbj2060/plantpoint-backend.git
+[submodule "plantpoint-frontend-vite"]
+	path = plantpoint-frontend-vite
+	url = https://github.com/kbj2060/plantpoint-frontend-vite.git
+[submodule "plantpoint-nutrient"]
+	path = plantpoint-nutrient
+	url = https://github.com/kbj2060/plantpoint-nutrient.git
