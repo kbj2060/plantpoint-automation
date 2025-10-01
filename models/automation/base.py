@@ -119,7 +119,6 @@ class BaseAutomation(ABC):
     def _handle_automation_message(self, mqtt_message: MQTTMessage) -> None:
         """자동화 설정 메시지 처리"""
         try:
-            print(mqtt_message)
             payload_data = MQTTPayloadData(
                 pattern=mqtt_message.topic,
                 data=SwitchMessage(

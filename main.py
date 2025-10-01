@@ -1,4 +1,4 @@
-from pprint import pprint
+from typing import Optional
 from logger.custom_logger import custom_logger
 from managers.automation_manager import AutomationManager
 from managers.current_manager import CurrentManager
@@ -7,7 +7,8 @@ from managers.thread_manager import ThreadManager
 from managers.resource_manager import ResourceManager
 from store import Store
 
-def main():
+
+def main() -> None:
     try:
         # 리소스 매니저 초기화
         resource_manager = ResourceManager()

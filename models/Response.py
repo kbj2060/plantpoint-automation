@@ -1,57 +1,76 @@
-import datetime
+"""Response models for API data structures."""
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, Any
 
 
+@dataclass
 class SwitchResponse:
-    def __init__(self, device_id: int, name: str, status: bool, created_at: datetime.datetime):
-        self.device_id = device_id
-        self.name = name
-        self.status = status
-        self.created_at = created_at
+    """Switch device status response."""
+    device_id: int
+    name: str
+    status: bool
+    created_at: datetime
 
+
+@dataclass
 class AutomationSwitchResponse:
-    def __init__(self, name: str, status: bool, created_at: datetime.datetime, controlled_by: str):
-        self.name = name
-        self.status = status
-        self.created_at = created_at
-        self.controlled_by = controlled_by
+    """Automated switch status response."""
+    name: str
+    status: bool
+    created_at: datetime
+    controlled_by: str
 
+
+@dataclass
 class EnvironmentResponse:
-    def __init__(self, name: str, value: float):
-        self.name = name
-        self.value = value
+    """Environment sensor reading response."""
+    name: str
+    value: float
 
+
+@dataclass
 class EnvironmentTypeResponse:
-    def __init__(self, id: int, name: str, unit: str, description: str, created_at: datetime.datetime):
-        self.id = id
-        self.name = name
-        self.unit = unit
-        self.description = description
-        self.created_at = created_at
+    """Environment type configuration response."""
+    id: int
+    name: str
+    unit: str
+    description: str
+    created_at: datetime
 
+
+@dataclass
 class AutomationResponse:
-    def __init__(self, device_id: int, category: str, settings: dict, active: int, updated_at: datetime.datetime):
-        self.device_id = device_id
-        self.category = category
-        self.settings = settings
-        self.active = active
-        self.updated_at = updated_at
+    """Automation configuration response."""
+    device_id: int
+    category: str
+    settings: Dict[str, Any]
+    active: int
+    updated_at: datetime
 
+
+@dataclass
 class MachineResponse:
-    def __init__(self, id: int, pin:int, name: str, created_at: datetime.datetime):
-        self.id = id
-        self.name = name
-        self.created_at = created_at
-        self.pin = pin
-        
-class SensorResponse:
-    def __init__(self, id: int, name: str, created_at: datetime.datetime, pin: int):
-        self.id = id
-        self.name = name
-        self.created_at = created_at
-        self.pin = pin
+    """Machine/device configuration response."""
+    id: int
+    pin: int
+    name: str
+    created_at: datetime
 
+
+@dataclass
+class SensorResponse:
+    """Sensor configuration response."""
+    id: int
+    name: str
+    created_at: datetime
+    pin: int
+
+
+@dataclass
 class CurrentResponse:
-    def __init__(self, device: str, current: bool, created_at: datetime.datetime):
-        self.device = device
-        self.current = current
-        self.created_at = created_at
+    """Current monitoring response."""
+    device: str
+    current: bool
+    created_at: datetime

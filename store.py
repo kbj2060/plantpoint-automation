@@ -1,42 +1,17 @@
-from typing import List, Dict, Optional
-from datetime import datetime
-from dataclasses import dataclass
+from typing import List
 from models.Machine import BaseMachine
 from models.Response import (
-    AutomationResponse, 
+    AutomationResponse,
     AutomationSwitchResponse,
-    CurrentResponse, 
-    EnvironmentResponse, 
-    EnvironmentTypeResponse, 
-    MachineResponse, 
-    SensorResponse, 
+    CurrentResponse,
+    EnvironmentResponse,
+    EnvironmentTypeResponse,
+    MachineResponse,
+    SensorResponse,
     SwitchResponse
 )
 from resources import http, redis
 from logger.custom_logger import custom_logger
-
-
-@dataclass
-class DeviceTimeState:
-    """디바이스의 시간 상태를 저장하는 클래스"""
-    on_time: Optional[datetime] = None
-    off_time: Optional[datetime] = None
-
-    def update_time(self, new_time: datetime, is_on: bool) -> None:
-        """시간 상태 업데이트"""
-        if is_on:
-            if not self.on_time or new_time > self.on_time:
-                self.on_time = new_time
-        else:
-            if not self.off_time or new_time > self.off_time:
-                self.off_time = new_time
-
-    def to_dict(self) -> dict:
-        """상태 정보를 딕셔너리로 변환"""
-        return {
-            'last_start_time': self.on_time,
-            'last_toggle_time': self.off_time
-        }
 
 
 class Store:
@@ -85,10 +60,6 @@ class Store:
         except Exception as e:
             custom_logger.error(f"Redis 데이터 저장 실패: {str(e)}")
             raise
-
-    def _parse_datetime(self, date_str: str) -> datetime:
-        """ISO 형식의 문자열을 datetime으로 변환"""
-        return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
 
     def _update_machines(self) -> None:
         """기기 정보 업데이트"""
