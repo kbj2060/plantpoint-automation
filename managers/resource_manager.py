@@ -75,7 +75,7 @@ class ResourceManager:
             bool: True if Redis is accessible
         """
         try:
-            redis.redis_client.ping()
+            redis.redis_client.client.ping()
             return True
         except Exception as e:
             custom_logger.error(f"Redis ping 실패: {str(e)}")

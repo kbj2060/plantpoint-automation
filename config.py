@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     use_real_gpio: bool = Field(default=True, description="Use real GPIO hardware")
 
     # Authentication
-    username: str = Field(..., description="API username")
-    password: str = Field(..., description="API password")
+    api_username: str = Field(..., description="API username")
+    api_password: str = Field(..., description="API password")
 
     # API URLs
     api_base_url: str = Field(default="http://localhost:3000", description="Base API URL")
@@ -92,6 +92,7 @@ class Settings(BaseSettings):
     )
 
     model_config = SettingsConfigDict(
+        # Try .env.development first (for local dev), fallback to .env (for production/docker)
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,

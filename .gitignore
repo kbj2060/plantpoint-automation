@@ -23,6 +23,8 @@ wheels/
 # Virtual Environment
 v/
 venv/
+env/
+ENV/
 
 # IDE
 .idea/
@@ -35,6 +37,14 @@ venv/
 *.log
 .logs/
 logs/
+
+# Environment Files
+# IMPORTANT: .env is for local development (copied from .env.development)
+# - Developers should copy .env.development to .env for local work
+# - .env.docker is used in Docker containers
+.env
+.env.local
+*.env.backup
 
 # OS
 .DS_Store

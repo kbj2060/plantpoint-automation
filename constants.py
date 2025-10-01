@@ -22,8 +22,8 @@ warnings.warn(
 USE_REAL_GPIO = settings.use_real_gpio
 
 # Authentication
-USERNAME = settings.username
-PASSWORD = settings.password
+USERNAME = settings.api_username
+PASSWORD = settings.api_password
 
 # Database Configuration
 DB_HOST = settings.db_host
