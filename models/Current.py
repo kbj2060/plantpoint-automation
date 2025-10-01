@@ -62,8 +62,8 @@ class CurrentThread(Thread):
                             self._handle_current_change(device, stable_state)
                             self.previous_states[device] = stable_state
                         else:
-                            # 웹소켓은 꾸준히 보내줘야 새로고침해도 사이트에 표시됨
-                            self._send_websocket_message(device, stable_state)
+                            # MQTT로 전송 (백엔드가 웹소켓으로 브로드캐스트)
+                            self._send_mqtt_message(device, stable_state)
                     
                     # 버퍼 초기화
                     self.reading_buffer[device] = []
