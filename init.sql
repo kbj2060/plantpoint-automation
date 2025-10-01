@@ -1,3 +1,8 @@
+-- 0. users 테이블에 기본 사용자 삽입
+INSERT INTO users (id, username, email, password, created_at) VALUES
+(1, 'admin', 'admin@plantpoint.com', 'admin123', CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
 -- 1. automation_type 테이블에 데이터 삽입
 INSERT INTO automation_type (id, name) VALUES
 (1, 'interval'),
@@ -27,28 +32,16 @@ ON CONFLICT (id) DO NOTHING;
 -- 3. interval_automation 테이블에 데이터 삽입
 INSERT INTO interval_automation (device_id, interval, duration, active) VALUES
 (2, '10m', '10s', true),    -- waterspray
-(3, '60m', '60m', true)  -- fan
-ON CONFLICT (device_id) DO UPDATE SET
-  interval = EXCLUDED.interval,
-  duration = EXCLUDED.duration,
-  active = EXCLUDED.active;
+(3, '60m', '60m', true);  -- fan
 
 -- 4. range_automation 테이블에 데이터 삽입
 INSERT INTO range_automation (device_id, start_time, end_time, active) VALUES
-(1, '06:00', '18:00', true)  -- led
-ON CONFLICT (device_id) DO UPDATE SET
-  start_time = EXCLUDED.start_time,
-  end_time = EXCLUDED.end_time,
-  active = EXCLUDED.active;
+(1, '06:00', '18:00', true);  -- led
 
 -- 5. target_automation 테이블에 데이터 삽입
 INSERT INTO target_automation (device_id, target, margin, active) VALUES
 (4, 25, 1, true),  -- airconditioner
-(5, 7, 1, true)   -- ph
-ON CONFLICT (device_id) DO UPDATE SET
-  target = EXCLUDED.target,
-  margin = EXCLUDED.margin,
-  active = EXCLUDED.active;
+(5, 7, 1, true);   -- ph
 
 -- 7. environment_logs 테이블에 데이터 삽입 (기존 데이터 유지)
 INSERT INTO environment_logs (environment_type, value, recorded_at) VALUES
