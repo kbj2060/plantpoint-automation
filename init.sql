@@ -1,6 +1,6 @@
 -- 0. users 테이블에 기본 사용자 삽입
-INSERT INTO users (id, username, email, password, created_at) VALUES
-(1, 'admin', 'admin@plantpoint.com', 'admin123', CURRENT_TIMESTAMP)
+INSERT INTO users (id, username, password, type, "createdAt", "isDeleted") VALUES
+(1, 'admin', 'admin123', 'admin', CURRENT_TIMESTAMP, false)
 ON CONFLICT (id) DO NOTHING;
 
 -- 1. automation_type 테이블에 데이터 삽입
