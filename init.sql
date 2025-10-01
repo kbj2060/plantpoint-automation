@@ -73,3 +73,10 @@ INSERT INTO switches (device_id, status, controlled_by, created_at) VALUES
 (3, true, 1, CURRENT_TIMESTAMP),
 (4, false, NULL, CURRENT_TIMESTAMP),
 (5, true, NULL, CURRENT_TIMESTAMP);
+
+-- 10. current 테이블에 데이터 삽입 (기계 디바이스들만)
+INSERT INTO current (device_id, current, pin, created_at) VALUES
+(1, false, 1, CURRENT_TIMESTAMP),  -- led
+(2, false, 2, CURRENT_TIMESTAMP),  -- waterspray
+(3, false, 3, CURRENT_TIMESTAMP),  -- fan
+(4, false, 4, CURRENT_TIMESTAMP);   -- airconditioner
