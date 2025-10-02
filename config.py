@@ -92,8 +92,8 @@ class Settings(BaseSettings):
     )
 
     model_config = SettingsConfigDict(
-        # Try .env.development first (for local dev), fallback to .env (for production/docker)
-        env_file=".env",
+        # .env.development has priority (for local dev), fallback to .env (for production/docker)
+        env_file=(".env", ".env.development"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore"

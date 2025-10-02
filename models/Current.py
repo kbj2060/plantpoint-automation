@@ -9,6 +9,8 @@ from models.Message import WSPayload, MQTTPayload
 
 
 if not USE_REAL_GPIO:
+    import fake_rpi
+    fake_rpi.toggle_print(False)  # fake GPIO 디버그 출력 끄기
     from fake_rpi.RPi import GPIO
 else:
     import RPi.GPIO as GPIO

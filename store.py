@@ -29,6 +29,7 @@ class Store:
 
             custom_logger.info(f"Store 데이터 로드 완료:")
             custom_logger.info(f"- Machines: {len(self.machines)}")
+            custom_logger.info(f"- Sensors: {len(self.sensors)}")
             custom_logger.info(f"- Automations: {len(self.automations)}")
             custom_logger.info(f"- Currents: {len(self.currents)}")
 
@@ -64,7 +65,7 @@ class Store:
     def _update_machines(self) -> None:
         """기기 정보 업데이트"""
         merged_data = BaseMachine.merge_device_data(self.switches, self.machines)
-        
+
         self.machines = [
             BaseMachine(
                 machine_id=data['id'],
