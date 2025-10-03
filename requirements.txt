@@ -5,8 +5,6 @@ fake_rpi==0.7.1
 idna==3.10
 packaging==24.2
 paho-mqtt==2.1.0
-pydantic==2.10.5
-pydantic-settings==2.7.1
 python-dotenv==1.0.1
 redis==5.2.1
 requests==2.32.3

@@ -1,119 +1,129 @@
-"""Configuration management using Pydantic Settings."""
+"""Configuration management using environment variables and .env files."""
 
+import os
 from typing import Optional
-from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import load_dotenv
 
 
-class Settings(BaseSettings):
-    """Application settings with validation."""
+class Settings:
+    """Application settings loaded from environment variables."""
 
-    # GPIO Configuration
-    use_real_gpio: bool = Field(default=True, description="Use real GPIO hardware")
+    def __init__(self):
+        # Load .env files in order of priority
+        load_dotenv(".env.development", override=True)
+        load_dotenv(".env", override=False)
 
-    # Authentication
-    api_username: str = Field(..., description="API username")
-    api_password: str = Field(..., description="API password")
+        # GPIO Configuration
+        self.use_real_gpio: bool = self._get_bool("USE_REAL_GPIO", True)
 
-    # API URLs
-    api_base_url: str = Field(default="http://localhost:3000", description="Base API URL")
-    signin_url: str = Field(default="http://localhost:3000/api/auth/signin", description="Sign in endpoint")
-    automation_read_url: str = Field(
-        default="http://localhost:3000/api/automation/read",
-        description="Automation read endpoint"
-    )
-    interval_device_states_read_url: str = Field(
-        default="http://localhost:3000/api/automation/interval/device/each/latest",
-        description="Interval device states endpoint"
-    )
-    environment_each_latest_read_url: str = Field(
-        default="http://localhost:3000/api/environment/each/latest",
-        description="Environment latest readings endpoint"
-    )
-    environment_type_read_url: str = Field(
-        default="http://localhost:3000/api/environment/type/read",
-        description="Environment type endpoint"
-    )
-    switch_each_latest_read_url: str = Field(
-        default="http://localhost:3000/api/switch/each/latest",
-        description="Switch latest states endpoint"
-    )
-    machine_read_url: str = Field(
-        default="http://localhost:3000/api/machine/device/read",
-        description="Machine read endpoint"
-    )
-    sensor_read_url: str = Field(
-        default="http://localhost:3000/api/machine/sensor/read",
-        description="Sensor read endpoint"
-    )
-    current_read_url: str = Field(
-        default="http://localhost:3000/api/machine/current/read",
-        description="Current read endpoint"
-    )
+        # Authentication
+        self.api_username: str = self._get_required("API_USERNAME")
+        self.api_password: str = self._get_required("API_PASSWORD")
 
-    # Database Configuration
-    db_host: str = Field(default="localhost", description="Database host")
-    db_port: int = Field(default=5432, description="Database port")
-    db_name: str = Field(default="plantpoint", description="Database name")
-    db_user: str = Field(default="plantpoint", description="Database user")
-    db_password: str = Field(default="plantpoint123", description="Database password")
+        # API URLs
+        self.api_base_url: str = os.getenv("API_BASE_URL", "http://localhost:3000")
+        self.signin_url: str = os.getenv("SIGNIN_URL", "http://localhost:3000/api/auth/signin")
+        self.automation_read_url: str = os.getenv("AUTOMATION_READ_URL", "http://localhost:3000/api/automation/read")
+        self.interval_device_states_read_url: str = os.getenv(
+            "INTERVAL_DEVICE_STATES_READ_URL",
+            "http://localhost:3000/api/automation/interval/device/each/latest"
+        )
+        self.environment_each_latest_read_url: str = os.getenv(
+            "ENVIRONMENT_EACH_LATEST_READ_URL",
+            "http://localhost:3000/api/environment/each/latest"
+        )
+        self.environment_type_read_url: str = os.getenv(
+            "ENVIRONMENT_TYPE_READ_URL",
+            "http://localhost:3000/api/environment/type/read"
+        )
+        self.switch_each_latest_read_url: str = os.getenv(
+            "SWITCH_EACH_LATEST_READ_URL",
+            "http://localhost:3000/api/switch/each/latest"
+        )
+        self.machine_read_url: str = os.getenv(
+            "MACHINE_READ_URL",
+            "http://localhost:3000/api/machine/device/read"
+        )
+        self.sensor_read_url: str = os.getenv(
+            "SENSOR_READ_URL",
+            "http://localhost:3000/api/machine/sensor/read"
+        )
+        self.current_read_url: str = os.getenv(
+            "CURRENT_READ_URL",
+            "http://localhost:3000/api/machine/current/read"
+        )
 
-    # MQTT Configuration
-    mqtt_host: str = Field(default="localhost", description="MQTT broker host")
-    mqtt_port: int = Field(default=1883, description="MQTT broker port")
-    mqtt_client_id: Optional[str] = Field(default=None, description="MQTT client ID (auto-generated if None)")
-    mqtt_keepalive: int = Field(default=60, description="MQTT keepalive interval in seconds")
+        # Database Configuration
+        self.db_host: str = os.getenv("DB_HOST", "localhost")
+        self.db_port: int = self._get_port("DB_PORT", 5432)
+        self.db_name: str = os.getenv("DB_NAME", "plantpoint")
+        self.db_user: str = os.getenv("DB_USER", "plantpoint")
+        self.db_password: str = os.getenv("DB_PASSWORD", "plantpoint123")
 
-    # Redis Configuration
-    redis_host: str = Field(default="localhost", description="Redis host")
-    redis_port: int = Field(default=6379, description="Redis port")
-    redis_db: int = Field(default=0, description="Redis database number")
+        # MQTT Configuration
+        self.mqtt_host: str = os.getenv("MQTT_HOST", "localhost")
+        self.mqtt_port: int = self._get_port("MQTT_PORT", 1883)
+        self.mqtt_client_id: Optional[str] = os.getenv("MQTT_CLIENT_ID")
+        self.mqtt_keepalive: int = self._get_positive_int("MQTT_KEEPALIVE", 60)
 
-    # WebSocket Configuration
-    ws_host: str = Field(default="localhost", description="WebSocket host")
-    ws_port: int = Field(default=3000, description="WebSocket port")
+        # Redis Configuration
+        self.redis_host: str = os.getenv("REDIS_HOST", "localhost")
+        self.redis_port: int = self._get_port("REDIS_PORT", 6379)
+        self.redis_db: int = self._get_int("REDIS_DB", 0)
 
-    # Logging Configuration
-    log_dir: str = Field(default=".logs", description="Log directory path")
-    log_max_bytes: int = Field(default=10 * 1024 * 1024, description="Maximum log file size in bytes")
-    log_backup_count: int = Field(default=5, description="Number of backup log files to keep")
+        # WebSocket Configuration
+        self.ws_host: str = os.getenv("WS_HOST", "localhost")
+        self.ws_port: int = self._get_port("WS_PORT", 3000)
 
-    # Thread Configuration
-    thread_check_interval: int = Field(
-        default=60,
-        description="Interval in seconds to check thread health"
-    )
+        # Logging Configuration
+        self.log_dir: str = os.getenv("LOG_DIR", ".logs")
+        self.log_max_bytes: int = self._get_int("LOG_MAX_BYTES", 10 * 1024 * 1024)
+        self.log_backup_count: int = self._get_int("LOG_BACKUP_COUNT", 5)
 
-    # Automation Configuration
-    current_buffer_size: int = Field(default=5, description="Buffer size for current monitoring")
-    target_required_count: int = Field(
-        default=3,
-        description="Required count for target automation to trigger"
-    )
+        # Thread Configuration
+        self.thread_check_interval: int = self._get_positive_int("THREAD_CHECK_INTERVAL", 60)
 
-    model_config = SettingsConfigDict(
-        # .env.development has priority (for local dev), fallback to .env (for production/docker)
-        env_file=(".env", ".env.development"),
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore"
-    )
+        # Automation Configuration
+        self.current_buffer_size: int = self._get_int("CURRENT_BUFFER_SIZE", 5)
+        self.target_required_count: int = self._get_int("TARGET_REQUIRED_COUNT", 3)
 
-    @field_validator("db_port", "mqtt_port", "redis_port", "ws_port")
-    @classmethod
-    def validate_port(cls, v: int) -> int:
-        """Validate port numbers are in valid range."""
-        if not 1 <= v <= 65535:
-            raise ValueError(f"Port must be between 1 and 65535, got {v}")
-        return v
+    def _get_required(self, key: str) -> str:
+        """Get required environment variable."""
+        value = os.getenv(key)
+        if value is None:
+            raise ValueError(f"Required environment variable {key} is not set")
+        return value
 
-    @field_validator("thread_check_interval", "mqtt_keepalive")
-    @classmethod
-    def validate_positive(cls, v: int) -> int:
-        """Validate values are positive."""
-        if v <= 0:
-            raise ValueError(f"Value must be positive, got {v}")
-        return v
+    def _get_bool(self, key: str, default: bool) -> bool:
+        """Get boolean environment variable."""
+        value = os.getenv(key)
+        if value is None:
+            return default
+        return value.lower() in ("true", "1", "yes", "on")
+
+    def _get_int(self, key: str, default: int) -> int:
+        """Get integer environment variable."""
+        value = os.getenv(key)
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except ValueError:
+            raise ValueError(f"Environment variable {key} must be an integer, got {value}")
+
+    def _get_port(self, key: str, default: int) -> int:
+        """Get port number environment variable with validation."""
+        port = self._get_int(key, default)
+        if not 1 <= port <= 65535:
+            raise ValueError(f"Port {key} must be between 1 and 65535, got {port}")
+        return port
+
+    def _get_positive_int(self, key: str, default: int) -> int:
+        """Get positive integer environment variable."""
+        value = self._get_int(key, default)
+        if value <= 0:
+            raise ValueError(f"Environment variable {key} must be positive, got {value}")
+        return value
 
 
 # Global settings instance
