@@ -59,10 +59,12 @@ class NutrientManager:
         try:
             self._discover_atlas_devices()
             if self.atlas_devices:
+                print('1')
                 custom_logger.info(f"Found {len(self.atlas_devices)} Atlas sensor(s)")
                 self._start_nutrient_threads()
                 return True
             else:
+                print('2')
                 custom_logger.warning("No Atlas sensors found")
                 return False
         except Exception as e:
@@ -76,6 +78,7 @@ class NutrientManager:
 
         device = AtlasI2C()
         device_address_list = device.list_i2c_devices()
+        print("asdasdasd:", device_address_list)
 
         for address in device_address_list:
             device.set_i2c_address(address)
