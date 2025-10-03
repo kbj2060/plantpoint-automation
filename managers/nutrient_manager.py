@@ -9,6 +9,7 @@ import time
 from typing import Optional, Dict, List
 from logger.custom_logger import custom_logger
 from managers.thread_manager import ThreadManager
+from resources import mqtt
 
 try:
     from drivers.AtlasI2C import AtlasI2C
@@ -195,13 +196,50 @@ class NutrientManager:
                 if not self.check_safety_limits(readings):
                     custom_logger.warning("Sensor readings outside safe limits")
 
+                # 센서값들을 MQTT로 전송
+                self._publish_sensor_data(readings)
+
                 # Store readings in store if needed
                 if self.store:
-                    for sensor_name, value in readings.items():
-                        self.store.set(f"sensor:{sensor_name}", value)
+                    pass
 
         except Exception as e:
             custom_logger.error(f"Error in adjust_nutrients: {e}")
+
+    def _publish_sensor_data(self, readings: Dict[str, float]) -> None:
+        """
+        센서 데이터를 MQTT로 전송 (범용)
+
+        Args:
+            readings: 센서 데이터 딕셔너리 (예: {'ph': 7.0, 'ec': 1.5, 'water_temperature': 25.0})
+        """
+        # 센서 이름과 MQTT 토픽 매핑
+        sensor_topic_mapping = {
+            "ph": "environment/ph",
+            "ec": "environment/ec",
+            "water_temperature": "environment/water_temperature"
+        }
+
+        timestamp = time.time()
+
+        for sensor_name, value in readings.items():
+            try:
+                # 매핑된 토픽이 있는 경우에만 전송
+                if sensor_name in sensor_topic_mapping:
+                    topic = sensor_topic_mapping[sensor_name]
+                    payload = {
+                        "pattern": topic,
+                        "data": {
+                            "name": sensor_name.lower(),
+                            "value": value
+                        }
+                    }
+
+                    mqtt.publish_message(topic, payload)
+                    custom_logger.debug(f"{sensor_name} 데이터 전송 완료: {value} -> {topic}")
+
+            except Exception as e:
+                custom_logger.error(f"{sensor_name} 데이터 전송 실패: {e}")
 
     def adjust_ph(self) -> None:
         """Adjust pH level (placeholder for future implementation)."""

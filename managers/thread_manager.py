@@ -90,9 +90,12 @@ class ThreadManager:
                 next_change_time
             ])
 
-        custom_logger.info(f"\n╔══════════════════════════════════════════════════════════╗")
-        custom_logger.info(f"║  자동화 상태 리포트 - {current_time}                    ║")
-        custom_logger.info(f"╚══════════════════════════════════════════════════════════╝\n")
+        header = f"자동화 상태 리포트 - {current_time}"
+        border_length = len(header) + 4
+
+        custom_logger.info(f"\n╔{'═' * border_length}╗")
+        custom_logger.info(f"║  {header}  ║")
+        custom_logger.info(f"╚{'═' * border_length}╝\n")
         custom_logger.info(tabulate(
             status_data,
             headers=["Device", "Category", "Active", "Status", "Next Change"],
@@ -104,29 +107,34 @@ class ThreadManager:
         try:
             # interval 타입 - 타이머 확인
             if automation.category == "interval" and hasattr(automation, 'state') and automation.state:
-                # ON 타이머와 OFF 타이머 중 활성화된 것 확인
                 if hasattr(automation.state, 'timers'):
-                    for timer_info in automation.state.timers.timers.values():
-                        if timer_info and timer_info.get('timer'):
-                            # 타이머가 예약된 시간 계산
-                            scheduled_time = timer_info.get('scheduled_time')
-                            if scheduled_time:
-                                now = datetime.now()
-                                if scheduled_time > now:
-                                    remaining = (scheduled_time - now).total_seconds() / 60
-                                    return f"{int(remaining)}분"
+                    now = datetime.now()
+
+                    # 현재 상태에 따라 다음 타이머 확인
+                    # ON 상태면 OFF 타이머, OFF 상태면 ON 타이머
+                    is_on = bool(automation.status)
+                    scheduled_time = automation.state.timers.get_scheduled_time(is_on=not is_on)
+
+                    if scheduled_time and scheduled_time > now:
+                        remaining_seconds = (scheduled_time - now).total_seconds()
+                        if remaining_seconds >= 60:
+                            return f"{int(remaining_seconds / 60)}분"
+                        else:
+                            return f"{int(remaining_seconds)}초"
 
             # range 타입 - 시작/종료 타이머 확인
-            elif automation.category == "range" and hasattr(automation, 'state') and automation.state:
-                if hasattr(automation.state, 'timers'):
-                    for timer_info in automation.state.timers.timers.values():
-                        if timer_info and timer_info.get('timer'):
-                            scheduled_time = timer_info.get('scheduled_time')
-                            if scheduled_time:
-                                now = datetime.now()
-                                if scheduled_time > now:
-                                    remaining = (scheduled_time - now).total_seconds() / 60
-                                    return f"{int(remaining)}분"
+            elif automation.category == "range" and hasattr(automation, 'timers'):
+                now = datetime.now()
+
+                # 시작/종료 타이머 확인
+                for is_on in [True, False]:
+                    scheduled_time = automation.timers.get_scheduled_time(is_on=is_on)
+                    if scheduled_time and scheduled_time > now:
+                        remaining_seconds = (scheduled_time - now).total_seconds()
+                        if remaining_seconds >= 60:
+                            return f"{int(remaining_seconds / 60)}분"
+                        else:
+                            return f"{int(remaining_seconds)}초"
 
             # target 타입 - 센서값 기반이므로 예측 불가
             elif automation.category == "target":

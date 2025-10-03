@@ -9,24 +9,28 @@ class RangeTimerManager:
     def __init__(self):
         self._start_timer: Optional[Timer] = None
         self._end_timer: Optional[Timer] = None
+        self._start_scheduled_time: Optional[datetime] = None
+        self._end_scheduled_time: Optional[datetime] = None
 
     def schedule_start(self, delay: float, callback) -> None:
         """시작 타이머 예약"""
         if self._start_timer and self._start_timer.is_alive():
             self._start_timer.cancel()
-        
+
         self._start_timer = Timer(delay, callback)
         self._start_timer.daemon = True
         self._start_timer.start()
+        self._start_scheduled_time = datetime.now() + timedelta(seconds=delay)
 
     def schedule_end(self, delay: float, callback) -> None:
         """종료 타이머 예약"""
         if self._end_timer and self._end_timer.is_alive():
             self._end_timer.cancel()
-            
+
         self._end_timer = Timer(delay, callback)
         self._end_timer.daemon = True
         self._end_timer.start()
+        self._end_scheduled_time = datetime.now() + timedelta(seconds=delay)
 
     def cancel_all(self) -> None:
         """모든 타이머 취소"""
@@ -35,6 +39,17 @@ class RangeTimerManager:
                 timer.cancel()
         self._start_timer = None
         self._end_timer = None
+        self._start_scheduled_time = None
+        self._end_scheduled_time = None
+
+    def get_scheduled_time(self, is_on: bool = True) -> Optional[datetime]:
+        """예약된 시간 반환 (is_on=True: 시작 타이머, False: 종료 타이머)"""
+        timer = self._start_timer if is_on else self._end_timer
+        scheduled_time = self._start_scheduled_time if is_on else self._end_scheduled_time
+
+        if timer and timer.is_alive() and scheduled_time:
+            return scheduled_time
+        return None
 
 class RangeAutomation(BaseAutomation):
     def __init__(self, device_id: int, category: str, active: bool, start_time: str, end_time: str, updated_at: str):

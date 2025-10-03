@@ -12,6 +12,8 @@ class TimerManager:
     def __init__(self):
         self._on_timer: Optional[Timer] = None
         self._off_timer: Optional[Timer] = None
+        self._on_scheduled_time: Optional[datetime] = None
+        self._off_scheduled_time: Optional[datetime] = None
 
     def schedule(self, delay: float, callback: Callable, is_on: bool = True) -> None:
         """타이머 예약"""
@@ -23,10 +25,14 @@ class TimerManager:
         new_timer.daemon = True
         new_timer.start()
 
+        scheduled_time = datetime.now() + timedelta(seconds=delay)
+
         if is_on:
             self._on_timer = new_timer
+            self._on_scheduled_time = scheduled_time
         else:
             self._off_timer = new_timer
+            self._off_scheduled_time = scheduled_time
 
     def cancel_all(self) -> None:
         """모든 타이머 취소"""
@@ -35,11 +41,22 @@ class TimerManager:
                 timer.cancel()
         self._on_timer = None
         self._off_timer = None
+        self._on_scheduled_time = None
+        self._off_scheduled_time = None
 
     def is_active(self, is_on: bool = True) -> bool:
         """타이머 활성화 상태 확인"""
         timer = self._on_timer if is_on else self._off_timer
         return bool(timer and timer.is_alive())
+
+    def get_scheduled_time(self, is_on: bool = True) -> Optional[datetime]:
+        """예약된 시간 반환"""
+        timer = self._on_timer if is_on else self._off_timer
+        scheduled_time = self._on_scheduled_time if is_on else self._off_scheduled_time
+
+        if timer and timer.is_alive() and scheduled_time:
+            return scheduled_time
+        return None
 
 class IntervalState:
     def __init__(self, device_state: Dict = None):
