@@ -64,10 +64,10 @@ class RangeAutomation(BaseAutomation):
             self.start_time = settings.get('start_time', '00:00')
             self.end_time = settings.get('end_time', '00:00')
             
-            self.logger.info(
-                f"Range 자동화 설정 초기화: "
-                f"시작={self.start_time}, 종료={self.end_time}"
-            )
+            # self.logger.info(
+            #     f"Range 자동화 설정 초기화: "
+            #     f"시작={self.start_time}, 종료={self.end_time}"
+            # )
 
             # 타이머 초기 설정
             if self.name:  # machine이 설정된 후에만 실행
@@ -79,11 +79,11 @@ class RangeAutomation(BaseAutomation):
                     start_hour, start_minute = map(int, self.start_time.split(':'))
                     end_hour, end_minute = map(int, self.end_time.split(':'))
                     
-                    self.logger.debug(
-                        f"시간 파싱 결과: "
-                        f"시작={start_hour}:{start_minute}, "
-                        f"종료={end_hour}:{end_minute}"
-                    )
+                    # self.logger.debug(
+                    #     f"시간 파싱 결과: "
+                    #     f"시작={start_hour}:{start_minute}, "
+                    #     f"종료={end_hour}:{end_minute}"
+                    # )
                     
                     start_time = datetime.combine(today, datetime.min.time().replace(
                         hour=start_hour, minute=start_minute
@@ -92,36 +92,36 @@ class RangeAutomation(BaseAutomation):
                         hour=end_hour, minute=end_minute
                     ))
                     
-                    self.logger.debug(
-                        f"datetime 변환 결과: "
-                        f"시작={start_time.strftime('%Y-%m-%d %H:%M:%S')}, "
-                        f"종료={end_time.strftime('%Y-%m-%d %H:%M:%S')}"
-                    )
+                    # self.logger.debug(
+                    #     f"datetime 변환 결과: "
+                    #     f"시작={start_time.strftime('%Y-%m-%d %H:%M:%S')}, "
+                    #     f"종료={end_time.strftime('%Y-%m-%d %H:%M:%S')}"
+                    # )
                     
                     # 종료 시간이 시작 시간보다 이전인 경우 다음날로 설정
                     if end_time <= start_time:
                         end_time += timedelta(days=1)
-                        self.logger.debug(f"종료 시간을 다음날로 조정: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+                        # self.logger.debug(f"종료 시간을 다음날로 조정: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
                     
                     # 현재 시간이 범위를 벗어난 경우 다음 주기로 설정
                     if now > end_time:
                         start_time += timedelta(days=1)
                         end_time += timedelta(days=1)
-                        self.logger.debug(
-                            f"다음 주기로 조정: "
-                            f"시작={start_time.strftime('%Y-%m-%d %H:%M:%S')}, "
-                            f"종료={end_time.strftime('%Y-%m-%d %H:%M:%S')}"
-                        )
+                        # self.logger.debug(
+                        #     f"다음 주기로 조정: "
+                        #     f"시작={start_time.strftime('%Y-%m-%d %H:%M:%S')}, "
+                        #     f"종료={end_time.strftime('%Y-%m-%d %H:%M:%S')}"
+                        # )
                     
                     # 타이머 설정
                     self._schedule_timers(now, start_time, end_time)
                     
                     # 현재 상태 설정
                     should_be_on = start_time <= now < end_time
-                    self.logger.debug(
-                        f"상태 계산: now={now.strftime('%Y-%m-%d %H:%M:%S')}, "
-                        f"should_be_on={should_be_on}"
-                    )
+                    # self.logger.debug(
+                    #     f"상태 계산: now={now.strftime('%Y-%m-%d %H:%M:%S')}, "
+                    #     f"should_be_on={should_be_on}"
+                    # )
                     
                     if should_be_on != self.status:
                         self.update_device_status(should_be_on)
@@ -199,19 +199,19 @@ class RangeAutomation(BaseAutomation):
         start_delay = (start_time - now).total_seconds()
         if start_delay > 0:
             self.timers.schedule_start(start_delay, lambda: self._handle_timer_event(True))
-            self.logger.info(
-                f"시작 타이머 예약: {start_time.strftime('%Y-%m-%d %H:%M:%S')} "
-                f"({start_delay:.0f}초 후)"
-            )
+            # self.logger.info(
+            #     f"시작 타이머 예약: {start_time.strftime('%Y-%m-%d %H:%M:%S')} "
+            #     f"({start_delay:.0f}초 후)"
+            # )
             
         # 종료 타이머
         end_delay = (end_time - now).total_seconds()
         if end_delay > 0:
             self.timers.schedule_end(end_delay, lambda: self._handle_timer_event(False))
-            self.logger.info(
-                f"종료 타이머 예약: {end_time.strftime('%Y-%m-%d %H:%M:%S')} "
-                f"({end_delay:.0f}초 후)"
-            )
+            # self.logger.info(
+            #     f"종료 타이머 예약: {end_time.strftime('%Y-%m-%d %H:%M:%S')} "
+            #     f"({end_delay:.0f}초 후)"
+            # )
 
     def _handle_timer_event(self, turn_on: bool):
         """타이머 이벤트 처리"""

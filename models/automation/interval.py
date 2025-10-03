@@ -99,11 +99,6 @@ class IntervalAutomation(BaseAutomation):
                 interval_settings
             ).to_seconds()
             
-            self.logger.info(
-                f"Interval 자동화 설정 초기화: "
-                f"duration={duration_settings}, interval={interval_settings}"
-            )
-            
         except Exception as e:
             self.logger.error(f"설정 초기화 실패: {str(e)}")
             raise ValueError(f"설정 초기화 실패: {str(e)}")
@@ -125,7 +120,7 @@ class IntervalAutomation(BaseAutomation):
             if not self.state or not self.state.last_toggle_time:
                 return self._handle_first_run(now)
 
-            self._log_current_state(now, current_status)
+            # self._log_current_state(now, current_status)
             self._handle_timers(current_status)
             return self.get_machine()
 
@@ -182,10 +177,10 @@ class IntervalAutomation(BaseAutomation):
     def _log_timer_scheduled(self, timer_type: str, delay: float) -> None:
         """타이머 예약 로깅"""
         scheduled_time = datetime.now() + timedelta(seconds=delay)
-        self.logger.debug(
-            f"Device {self.name}: {delay}초 후 {timer_type} 예약됨 "
-            f"(예정 시각: {scheduled_time.strftime('%H:%M:%S')})"
-        )
+        # self.logger.debug(
+        #     f"Device {self.name}: {delay}초 후 {timer_type} 예약됨 "
+        #     f"(예정 시각: {scheduled_time.strftime('%H:%M:%S')})"
+        # )
 
     def _handle_first_run(self, current_time: datetime) -> BaseMachine:
         """첫 실행 처리 - Redis의 마지막 상태와 경과 시간 기준 (status True/False 기반)"""
@@ -232,11 +227,11 @@ class IntervalAutomation(BaseAutomation):
                 self.state.update_toggle_time(current_time)
                 self._schedule_on_timer()
 
-            self.logger.info(
-                f"Device {self.name}: 첫 실행 상태 설정 "
-                f"({'ON' if self.status else 'OFF'}) "
-                f"(Redis 마지막 상태 기준)"
-            )
+            # self.logger.info(
+            #     f"Device {self.name}: 첫 실행 상태 설정 "
+            #     f"({'ON' if self.status else 'OFF'}) "
+            #     f"(Redis 마지막 상태 기준)"
+            # )
             return self.get_machine()
 
         except Exception as e:

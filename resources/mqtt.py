@@ -171,7 +171,7 @@ class MQTTClient:
             info = self.client.publish(topic, message, qos=qos, retain=retain)
 
             if info.rc == mqtt.MQTT_ERR_SUCCESS:
-                custom_logger.debug(f"MQTT 메시지 발행 성공: {topic}")
+                # custom_logger.debug(f"MQTT 메시지 발행 성공: {topic}")
                 return True
             else:
                 error_msg = mqtt.error_string(info.rc)

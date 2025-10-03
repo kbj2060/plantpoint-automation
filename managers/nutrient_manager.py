@@ -10,6 +10,8 @@ from typing import Optional, Dict, List
 from logger.custom_logger import custom_logger
 from managers.thread_manager import ThreadManager
 from resources import mqtt
+from tabulate import tabulate
+from datetime import datetime
 
 try:
     from drivers.AtlasI2C import AtlasI2C
@@ -189,8 +191,8 @@ class NutrientManager:
             readings = self.read_sensors()
 
             if readings:
-                # Log current readings
-                custom_logger.info(f"Sensor readings: {readings}")
+                # 센서값을 표 형식으로 출력
+                self._print_sensor_table(readings)
 
                 # Check safety limits
                 if not self.check_safety_limits(readings):
@@ -205,6 +207,67 @@ class NutrientManager:
 
         except Exception as e:
             custom_logger.error(f"Error in adjust_nutrients: {e}")
+
+    def _print_sensor_table(self, readings: Dict[str, float]) -> None:
+        """
+        센서 데이터를 표 형식으로 출력
+
+        Args:
+            readings: 센서 데이터 딕셔너리
+        """
+        current_time = datetime.now().strftime("%H:%M:%S")
+
+        # 센서 데이터 테이블 준비
+        sensor_display_names = {
+            "ph": "pH",
+            "ec": "EC (mS/cm)",
+            "water_temperature": "Water Temp (°C)"
+        }
+
+        table_data = []
+        for sensor_name, value in readings.items():
+            display_name = sensor_display_names.get(sensor_name, sensor_name)
+            # 안전 범위 확인
+            status = self._get_sensor_status(sensor_name, value)
+            table_data.append([display_name, f"{value:.2f}", status])
+
+        print(f"\n╔{'═' * 58}╗")
+        print(f"║  영양소 센서 상태 - {current_time}                             ║")
+        print(f"╚{'═' * 58}╝\n")
+        print(tabulate(
+            table_data,
+            headers=["Sensor", "Value", "Status"],
+            tablefmt="grid"
+        ))
+        print()
+
+    def _get_sensor_status(self, sensor_name: str, value: float) -> str:
+        """
+        센서값의 상태를 반환 (정상/경고)
+
+        Args:
+            sensor_name: 센서 이름
+            value: 센서값
+
+        Returns:
+            상태 문자열
+        """
+        if sensor_name == "ph":
+            if self.PH_MIN <= value <= self.PH_MAX:
+                return "✓ 정상"
+            else:
+                return "⚠ 경고"
+        elif sensor_name == "ec":
+            if self.EC_MIN <= value <= self.EC_MAX:
+                return "✓ 정상"
+            else:
+                return "⚠ 경고"
+        elif sensor_name == "water_temperature":
+            if self.TEMP_MIN <= value <= self.TEMP_MAX:
+                return "✓ 정상"
+            else:
+                return "⚠ 경고"
+        return "-"
 
     def _publish_sensor_data(self, readings: Dict[str, float]) -> None:
         """

@@ -35,7 +35,7 @@ class TargetAutomation(BaseAutomation):
             self.in_range_count = 0  # 초기화 시점에 0으로 설정
             self.required_count = 3  # 필요한 연속 카운트 수는 3
             self.value = None
-            self.logger.info(f"Target 자동화 설정 초기화: target={self.target}, margin={self.margin}")
+            # self.logger.info(f"Target 자동화 설정 초기화: target={self.target}, margin={self.margin}")
         except (TypeError, ValueError) as e:
             self.target = None
             self.margin = None
@@ -61,14 +61,14 @@ class TargetAutomation(BaseAutomation):
             upper_bound = self.target + self.margin
 
             # 현재 상태 로깅
-            self.logger.debug(
-                f"Device {self.name} 상태 체크: "
-                f"현재값={self.value}, "
-                f"목표값={self.target}, "
-                f"허용범위={lower_bound} ~ {upper_bound}, "
-                f"현재상태={'ON' if self.status else 'OFF'}, "
-                f"연속 카운트={self.in_range_count}/{self.required_count}"
-            )
+            # self.logger.debug(
+            #     f"Device {self.name} 상태 체크: "
+            #     f"현재값={self.value}, "
+            #     f"목표값={self.target}, "
+            #     f"허용범위={lower_bound} ~ {upper_bound}, "
+            #     f"현재상태={'ON' if self.status else 'OFF'}, "
+            #     f"연속 카운트={self.in_range_count}/{self.required_count}"
+            # )
             
             # 목표값과의 차이가 허용 오차를 벗어난 경우
             if value_difference > self.margin:
