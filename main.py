@@ -10,10 +10,10 @@ from store import Store
 def main() -> None:
     try:
         # 리소스 매니저 초기화
-        #resource_manager = ResourceManager()
-        #if not resource_manager.initialize():
-        #    custom_logger.error("리소스 매니저 초기화 실패")
-        #    return
+        resource_manager = ResourceManager()
+        if not resource_manager.initialize():
+            custom_logger.error("리소스 매니저 초기화 실패")
+            return
             
         # Store 초기화
         store = Store()
@@ -22,10 +22,10 @@ def main() -> None:
         thread_manager = ThreadManager()
         
         # 자동화 매니저 초기화 및 실행
-        #automation_manager = AutomationManager(store, thread_manager)
-        #if not automation_manager.initialize():
-        #    custom_logger.error("자동화 매니저 초기화 실패")
-        #    return
+        automation_manager = AutomationManager(store, thread_manager)
+        if not automation_manager.initialize():
+            custom_logger.error("자동화 매니저 초기화 실패")
+            return
 
         # NutrientManager 초기화 및 실행
         nutrient_manager = NutrientManager(store, thread_manager)
