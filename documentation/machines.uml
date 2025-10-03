@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>Python</ID>
+  <OriginalElement>#/Users/gimbyeongjin/projects/plantpoint-automation/reference/machines.py</OriginalElement>
+  <nodes>
+    <node x="723.5303030303031" y="0.0">interfaces.Machine.BaseMachine</node>
+    <node x="1109.818181818182" y="413.0">interfaces.Machine.CycleMachine</node>
+    <node x="0.0" y="799.0">reference.machines.CoolerMachine</node>
+    <node x="259.69696969696975" y="424.0">interfaces.Machine.RangeMachine</node>
+    <node x="1514.6023102310232" y="803.5643564356435">reference.machines.RoofFanMachine</node>
+    <node x="604.0" y="810.0">reference.machines.LedMachine</node>
+    <node x="1232.5" y="803.5643564356436">reference.machines.FanMachine</node>
+    <node x="580.5" y="672.5">interfaces.Machine.TimeRangeMachine</node>
+    <node x="112.0" y="672.5">interfaces.Machine.TemperatureRangeMachine</node>
+    <node x="302.0" y="799.0">reference.machines.HeaterMachine</node>
+    <node x="911.1534653465346" y="808.2178217821782">reference.machines.WaterPumpMachine</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="reference.machines.HeaterMachine" target="interfaces.Machine.TemperatureRangeMachine">
+      <point x="0.0" y="-60.5" />
+      <point x="443.0" y="774.0" />
+      <point x="382.0" y="774.0" />
+      <point x="90.0" y="27.0" />
+    </edge>
+    <edge source="reference.machines.CoolerMachine" target="interfaces.Machine.TemperatureRangeMachine">
+      <point x="0.0" y="-60.5" />
+      <point x="141.0" y="774.0" />
+      <point x="202.0" y="774.0" />
+      <point x="-90.0" y="27.0" />
+    </edge>
+    <edge source="interfaces.Machine.TimeRangeMachine" target="interfaces.Machine.RangeMachine">
+      <point x="0.0" y="-27.0" />
+      <point x="733.5" y="625.0" />
+      <point x="585.1969696969697" y="625.0" />
+      <point x="108.5" y="82.5" />
+    </edge>
+    <edge source="interfaces.Machine.RangeMachine" target="interfaces.Machine.BaseMachine">
+      <point x="0.0" y="-82.5" />
+      <point x="476.69696969696975" y="388.0" />
+      <point x="790.2803030303031" y="388.0" />
+      <point x="-66.75" y="181.5" />
+    </edge>
+    <edge source="reference.machines.LedMachine" target="interfaces.Machine.TimeRangeMachine">
+      <point x="0.0" y="-49.5" />
+      <point x="0.0" y="27.0" />
+    </edge>
+    <edge source="interfaces.Machine.CycleMachine" target="interfaces.Machine.BaseMachine">
+      <point x="0.0" y="-93.5" />
+      <point x="1356.318181818182" y="388.0" />
+      <point x="923.7803030303031" y="388.0" />
+      <point x="66.75" y="181.5" />
+    </edge>
+    <edge source="reference.machines.RoofFanMachine" target="interfaces.Machine.CycleMachine">
+      <point x="0.0" y="-49.5" />
+      <point x="1656.5" y="625.0" />
+      <point x="1520.6515151515152" y="625.0" />
+      <point x="164.33333333333326" y="93.5" />
+    </edge>
+    <edge source="reference.machines.WaterPumpMachine" target="interfaces.Machine.CycleMachine">
+      <point x="0.0" y="-49.5" />
+      <point x="1059.5" y="625.0" />
+      <point x="1191.9848484848487" y="625.0" />
+      <point x="-164.33333333333326" y="93.5" />
+    </edge>
+    <edge source="interfaces.Machine.TemperatureRangeMachine" target="interfaces.Machine.RangeMachine">
+      <point x="0.0" y="-27.0" />
+      <point x="292.0" y="625.0" />
+      <point x="368.19696969696975" y="625.0" />
+      <point x="-108.5" y="82.5" />
+    </edge>
+    <edge source="reference.machines.FanMachine" target="interfaces.Machine.CycleMachine">
+      <point x="0.0" y="-49.5" />
+      <point x="1362.0" y="625.0" />
+      <point x="1356.318181818182" y="625.0" />
+      <point x="0.0" y="93.5" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic Group" zoom="0.4180821917808219" x="902.5" y="460.0" />
+  <SelectedNodes>
+    <node>reference.machines.RoofFanMachine</node>
+  </SelectedNodes>
+  <Categories>
+    <Category>Methods</Category>
+    <Category>Inner Classes</Category>
+    <Category>Fields</Category>
+  </Categories>
+</Diagram>
+

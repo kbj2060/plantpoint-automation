@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>Python</ID>
+  <OriginalElement>#/Users/gimbyeongjin/projects/plantpoint-automation/reference/envrionments.py</OriginalElement>
+  <nodes>
+    <node x="0.0" y="149.0">reference.envrionments.Co2</node>
+    <node x="255.0" y="0.0">interfaces.Environment.Environment</node>
+    <node x="573.0" y="149.0">reference.envrionments.Humidity</node>
+    <node x="255.0" y="149.0">reference.envrionments.Temperature</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="reference.envrionments.Temperature" target="interfaces.Environment.Environment">
+      <point x="0.0" y="-27.0" />
+      <point x="0.0" y="49.5" />
+    </edge>
+    <edge source="reference.envrionments.Humidity" target="interfaces.Environment.Environment">
+      <point x="0.0" y="-27.0" />
+      <point x="710.0" y="124.0" />
+      <point x="503.33333333333326" y="124.0" />
+      <point x="99.33333333333326" y="49.5" />
+    </edge>
+    <edge source="reference.envrionments.Co2" target="interfaces.Environment.Environment">
+      <point x="0.0" y="-27.0" />
+      <point x="117.5" y="124.0" />
+      <point x="304.6666666666667" y="124.0" />
+      <point x="-99.33333333333331" y="49.5" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic Group" zoom="0.8800461361014994" x="423.5" y="101.5" />
+  <SelectedNodes>
+    <node>reference.envrionments.Co2</node>
+  </SelectedNodes>
+  <Categories>
+    <Category>Methods</Category>
+    <Category>Inner Classes</Category>
+    <Category>Fields</Category>
+  </Categories>
+</Diagram>
+
