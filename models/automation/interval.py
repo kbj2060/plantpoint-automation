@@ -153,7 +153,7 @@ class IntervalAutomation(BaseAutomation):
 
     def _log_current_state(self, now: datetime, current_status: bool) -> None:
         """현재 상태 로깅"""
-        self.logger.info(
+        self.logger.debug(
             f"Device {self.name} 상태 체크: "
             f"현재시간={now.strftime('%H:%M:%S')}, "
             f"마지막토글={self.state.last_toggle_time.strftime('%H:%M:%S')}, "
@@ -165,7 +165,7 @@ class IntervalAutomation(BaseAutomation):
     def _log_timer_scheduled(self, timer_type: str, delay: float) -> None:
         """타이머 예약 로깅"""
         scheduled_time = datetime.now() + timedelta(seconds=delay)
-        self.logger.info(
+        self.logger.debug(
             f"Device {self.name}: {delay}초 후 {timer_type} 예약됨 "
             f"(예정 시각: {scheduled_time.strftime('%H:%M:%S')})"
         )

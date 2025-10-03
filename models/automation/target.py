@@ -52,16 +52,16 @@ class TargetAutomation(BaseAutomation):
         
         if self.value is None:
             # 센서값이 없으면 제어하지 않고 종료
-            self.logger.info(f"Device {self.name}: 센서값이 없어 제어하지 않습니다.")
+            self.logger.debug(f"Device {self.name}: 센서값이 없어 제어하지 않습니다.")
             return None
 
         try:
             value_difference = abs(self.value - self.target)
             lower_bound = self.target - self.margin
             upper_bound = self.target + self.margin
-            
+
             # 현재 상태 로깅
-            self.logger.info(
+            self.logger.debug(
                 f"Device {self.name} 상태 체크: "
                 f"현재값={self.value}, "
                 f"목표값={self.target}, "
