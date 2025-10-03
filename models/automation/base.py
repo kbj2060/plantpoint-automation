@@ -3,12 +3,10 @@ from typing import Optional, Dict
 from logger.custom_logger import CustomLogger
 from models.Machine import BaseMachine
 from resources import mqtt
-from constants import SWITCH_SOCKET_ADDRESS, WS_SWITCH_EVENT
 from models.automation.models import (
-    MQTTMessage, 
+    MQTTMessage,
     SwitchMessage,
     MQTTPayloadData,
-    WebSocketMessage,
     TopicType,
     MessageHandler
 )
@@ -185,30 +183,10 @@ class BaseAutomation(ABC):
             self.logger.error(f"MQTT 메시지 전송 실패: {str(e)}")
             raise
 
-    # def send_websocket_message(self, new_status: bool) -> None:
-    #     """WebSocket 메시지 전송"""
-    #     try:
-    #         # WebSocket 메시지 생성
-    #         ws_payload = WebSocketMessage.from_switch(
-    #             name=self.name,
-    #             value=new_status,
-    #             event=WS_SWITCH_EVENT
-    #         )
-            
-    #         # WebSocket 클라이언트 생성 및 메시지 전송
-    #         ws_client = ws()    
-    #         ws_client.send_message(**ws_payload.to_dict())
-    #         ws_client.disconnect()
-    #         self.logger.info(f"WebSocket 메시지 전송 성공: {self.name} = {new_status}")
-    #     except Exception as e:
-    #         self.logger.error(f"WebSocket 메시지 전송 실패: {str(e)}")
-    #         raise
-
     def update_device_status(self, new_status: bool) -> None:
         """디바이스 상태 업데이트 및 GPIO 제어"""
         try:
             self.send_mqtt_message(new_status)
-            # self.send_websocket_message(new_status)
             self.status = new_status
             self.logger.info(f"상태 업데이트 성공: {self.name} / {self.device_id} = {new_status}")
         except Exception as e:

@@ -2,10 +2,10 @@ from threading import Thread
 import time
 from typing import Dict, List
 from collections import defaultdict
-from resources import mqtt, ws
-from constants import CURRENT_SOCKET_ADDRESS,WS_CURRENT_EVENT, USE_REAL_GPIO
+from resources import mqtt
+from constants import USE_REAL_GPIO
 from logger.custom_logger import custom_logger
-from models.Message import WSPayload, MQTTPayload
+from models.Message import MQTTPayload
 
 
 if not USE_REAL_GPIO:
@@ -95,9 +95,6 @@ class CurrentThread(Thread):
             # MQTT로 전송
             self._send_mqtt_message(device, state)
             
-            # WebSocket으로 전송
-            # self._send_websocket_message(device, state)
-            
         except Exception as e:
             custom_logger.error(f"전류 상태 변경 처리 실패: {str(e)}")
     
@@ -116,24 +113,7 @@ class CurrentThread(Thread):
             
         except Exception as e:
             custom_logger.error(f"MQTT 메시지 전송 실패: {str(e)}")
-            
-    def _send_websocket_message(self, device: str, state: int):
-        """WebSocket으로 전류 상태 전송"""
-        try:
-            payload: WSPayload = {
-                "event": WS_CURRENT_EVENT,
-                "data": {
-                    device: True if state == GPIO.HIGH else False
-                }
-            }
-            
-            ws_client = ws(url=f"{CURRENT_SOCKET_ADDRESS}/{device}")
-            ws_client.send_message(**payload)
-            ws_client.disconnect()
-            
-        except Exception as e:
-            custom_logger.error(f"WebSocket 메시지 전송 실패: {str(e)}")
-            
+
     def stop(self):
         """모니터링 종료"""
         self.active = False

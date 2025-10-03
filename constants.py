@@ -52,25 +52,12 @@ MACHINE_READ_URL = settings.machine_read_url
 SENSOR_READ_URL = settings.sensor_read_url
 CURRENT_READ_URL = settings.current_read_url
 
-# WebSocket Configuration (backward compatibility)
-BACKEND_ADDRESS = settings.api_base_url
-SWITCH_SOCKET_ADDRESS = f"ws://{settings.ws_host}:{settings.ws_port}"
-CURRENT_SOCKET_ADDRESS = f"ws://{settings.ws_host}:{settings.ws_port}"
-SOCKET_ADDRESS = f"ws://{settings.ws_host}:{settings.ws_port}"
-WS_SWITCH_EVENT = "switch"
-WS_CURRENT_EVENT = "current"
-SWITCH_CREATE_URL = f"{settings.api_base_url}/switches/create"
-
 # Status Constants
 ON = 1
 OFF = 0
 
 # Thread Configuration
 TREAD_DURATION_LIMIT = settings.thread_check_interval
-
-# WebSocket Events
-SEND_SWITCH_TO_SERVER = 'sendSwitchToServer'
-SEND_CURRENT_TO_SERVER = 'sendCurrentToServer'
 
 # Deprecated: These lambda functions are no longer used
 # Kept for backward compatibility only

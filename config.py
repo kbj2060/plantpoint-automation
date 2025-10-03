@@ -71,10 +71,6 @@ class Settings:
         self.redis_port: int = self._get_port("REDIS_PORT", 6379)
         self.redis_db: int = self._get_int("REDIS_DB", 0)
 
-        # WebSocket Configuration
-        self.ws_host: str = os.getenv("WS_HOST", "localhost")
-        self.ws_port: int = self._get_port("WS_PORT", 3000)
-
         # Logging Configuration
         self.log_dir: str = os.getenv("LOG_DIR", ".logs")
         self.log_max_bytes: int = self._get_int("LOG_MAX_BYTES", 10 * 1024 * 1024)
