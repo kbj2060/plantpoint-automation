@@ -10,8 +10,8 @@ class Settings:
 
     def __init__(self):
         # Load .env files in order of priority
-        load_dotenv(".env.development", override=True)
-        load_dotenv(".env", override=False)
+        load_dotenv(".env", override=True)
+        load_dotenv(".env.development", override=False)
 
         # GPIO Configuration
         self.use_real_gpio: bool = self._get_bool("USE_REAL_GPIO", True)
