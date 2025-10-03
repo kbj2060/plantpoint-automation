@@ -93,14 +93,15 @@ class ThreadManager:
         header = f"자동화 상태 리포트 - {current_time}"
         border_length = len(header) + 4
 
-        custom_logger.info(f"\n╔{'═' * border_length}╗")
-        custom_logger.info(f"║  {header}  ║")
-        custom_logger.info(f"╚{'═' * border_length}╝\n")
-        custom_logger.info(tabulate(
+        print(f"\n╔{'═' * border_length}╗")
+        print(f"║  {header}  ║")
+        print(f"╚{'═' * border_length}╝\n")
+        print(tabulate(
             status_data,
             headers=["Device", "Category", "Active", "Status", "Next Change"],
             tablefmt="grid"
-        ) + "\n")
+        ))
+        print()
 
     def _get_next_change_time(self, automation) -> str:
         """다음 상태 변경까지 남은 시간 계산"""
