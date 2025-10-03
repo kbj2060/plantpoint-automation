@@ -1,15 +1,13 @@
 import threading
-from typing import List, Dict
+from typing import List
 from logger.custom_logger import custom_logger
 from models.automation.base import BaseAutomation
-from models.Current import CurrentThread
 from threading import Event
 
 class ThreadManager:
     def __init__(self):
         self.automation_threads: List[threading.Thread] = []
         self.nutrient_threads: List[threading.Thread] = []
-        self.current_threads: Dict[str, CurrentThread] = {}
         self.stop_event = Event()
 
     def create_automation_thread(self, automation: BaseAutomation) -> threading.Thread:
@@ -74,17 +72,8 @@ class ThreadManager:
                 thread.join()
         self.nutrient_threads.clear()
 
-    def stop_current_threads(self):
-        """전류 모니터링 스레드만 종료"""
-        self.stop_event.set()
-        for thread in self.current_threads.values():
-            if thread.is_alive():
-                thread.join()
-        self.current_threads.clear()
-
     def stop_all(self):
         """모든 스레드 종료"""
         self.stop_event.set()
         self.stop_automation_threads()
-        self.stop_current_threads()
         self.stop_nutrient_threads() 

@@ -1,7 +1,6 @@
 from typing import Optional
 from logger.custom_logger import custom_logger
 from managers.automation_manager import AutomationManager
-from managers.current_manager import CurrentManager
 from managers.nutrient_manager import NutrientManager
 from managers.thread_manager import ThreadManager
 from managers.resource_manager import ResourceManager
@@ -27,12 +26,7 @@ def main() -> None:
         if not automation_manager.initialize():
             custom_logger.error("자동화 매니저 초기화 실패")
             return
-            
-        # 전류 모니터링 매니저 초기화 및 실행
-        current_manager = CurrentManager(store, thread_manager)
-        if not current_manager.initialize():
-            custom_logger.warning("전류 모니터링 초기화 실패")
-            
+
         # NutrientManager 초기화 및 실행
         nutrient_manager = NutrientManager(store, thread_manager)
         if not nutrient_manager.initialize():
@@ -47,8 +41,6 @@ def main() -> None:
         custom_logger.error(f"프로그램 실행 중 오류 발생: {str(e)}")
     finally:
         # 종료 처리
-        if 'current_manager' in locals():
-            current_manager.stop()
         if 'automation_manager' in locals():
             automation_manager.stop()
         if 'nutrient_manager' in locals():
