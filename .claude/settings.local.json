@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker exec:*)",
+      "Bash(python:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker network inspect:*)",
+      "Read(//c/Users/kbj20/github/**)",
+      "Bash(cat:*)",
+      "Bash(timeout:*)",
+      "Bash(curl -s http://127.0.0.1:9000/authentication/signin -X POST -H \"Content-Type: application/json\" -d '{\"\"\"\"username\"\"\"\":\"\"\"\"llewyn\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"1234\"\"\"\"}')",
+      "Bash(find:*)",
+      "Bash(echo \"OS USERNAME: $USERNAME\")",
+      "Bash(pip install:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
