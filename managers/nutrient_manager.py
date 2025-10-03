@@ -133,7 +133,6 @@ class NutrientManager:
                     value = float(value_str)
                     sensor_name = self._get_sensor_name(dev.moduletype)
                     results[sensor_name] = value
-                    custom_logger.debug(f"Read {sensor_name}: {value}")
                 except (ValueError, IndexError) as err:
                     custom_logger.error(f"Error reading {dev.moduletype}: {err}")
 
@@ -148,40 +147,6 @@ class NutrientManager:
         """Map module type to sensor name."""
         return self.SENSOR_NAME_MAPPING.get(moduletype.upper(), moduletype.lower())
 
-    def check_safety_limits(self, readings: Dict[str, float]) -> bool:
-        """
-        Check if sensor readings are within safe limits.
-
-        Args:
-            readings: Dictionary of sensor readings
-
-        Returns:
-            bool: True if all readings are safe, False otherwise
-        """
-        warnings = []
-
-        ph = readings.get("ph")
-        if ph is not None:
-            if ph < self.PH_MIN or ph > self.PH_MAX:
-                warnings.append(f"pH out of range: {ph} (safe range: {self.PH_MIN}-{self.PH_MAX})")
-
-        ec = readings.get("ec")
-        if ec is not None:
-            if ec < self.EC_MIN or ec > self.EC_MAX:
-                warnings.append(f"EC out of range: {ec} (safe range: {self.EC_MIN}-{self.EC_MAX})")
-
-        temp = readings.get("water_temperature")
-        if temp is not None:
-            if temp < self.TEMP_MIN or temp > self.TEMP_MAX:
-                warnings.append(f"Temperature out of range: {temp} (safe range: {self.TEMP_MIN}-{self.TEMP_MAX})")
-
-        if warnings:
-            for warning in warnings:
-                custom_logger.warning(warning)
-            return False
-
-        return True
-
     def adjust_nutrients(self) -> None:
         """
         Main loop for nutrient adjustment.
@@ -193,10 +158,6 @@ class NutrientManager:
             if readings:
                 # 센서값을 표 형식으로 출력
                 self._print_sensor_table(readings)
-
-                # Check safety limits
-                if not self.check_safety_limits(readings):
-                    custom_logger.warning("Sensor readings outside safe limits")
 
                 # 센서값들을 MQTT로 전송
                 self._publish_sensor_data(readings)
@@ -218,25 +179,39 @@ class NutrientManager:
         current_time = datetime.now().strftime("%H:%M:%S")
 
         # 센서 데이터 테이블 준비
-        sensor_display_names = {
-            "ph": "pH",
-            "ec": "EC (mS/cm)",
-            "water_temperature": "Water Temp (°C)"
+        sensor_info = {
+            "ph": {
+                "name": "pH",
+                "min": self.PH_MIN,
+                "max": self.PH_MAX
+            },
+            "ec": {
+                "name": "EC (mS/cm)",
+                "min": self.EC_MIN,
+                "max": self.EC_MAX
+            },
+            "water_temperature": {
+                "name": "Water Temp (°C)",
+                "min": self.TEMP_MIN,
+                "max": self.TEMP_MAX
+            }
         }
 
         table_data = []
         for sensor_name, value in readings.items():
-            display_name = sensor_display_names.get(sensor_name, sensor_name)
-            # 안전 범위 확인
-            status = self._get_sensor_status(sensor_name, value)
-            table_data.append([display_name, f"{value:.2f}", status])
+            if sensor_name in sensor_info:
+                info = sensor_info[sensor_name]
+                display_name = info["name"]
+                range_str = f"{info['min']:.1f} ~ {info['max']:.1f}"
+                status = self._get_sensor_status(sensor_name, value)
+                table_data.append([display_name, f"{value:.2f}", range_str, status])
 
         print(f"\n╔{'═' * 58}╗")
         print(f"║  영양소 센서 상태 - {current_time}                             ║")
         print(f"╚{'═' * 58}╝\n")
         print(tabulate(
             table_data,
-            headers=["Sensor", "Value", "Status"],
+            headers=["Sensor", "Value", "Range", "Status"],
             tablefmt="grid"
         ))
         print()
@@ -299,7 +274,7 @@ class NutrientManager:
                     }
 
                     mqtt.publish_message(topic, payload)
-                    custom_logger.debug(f"{sensor_name} 데이터 전송 완료: {value} -> {topic}")
+                    # custom_logger.debug(f"{sensor_name} 데이터 전송 완료: {value} -> {topic}")
 
             except Exception as e:
                 custom_logger.error(f"{sensor_name} 데이터 전송 실패: {e}")

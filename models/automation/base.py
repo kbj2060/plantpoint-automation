@@ -178,7 +178,7 @@ class BaseAutomation(ABC):
             
             # 메시지 전송
             mqtt.publish_message(self.mqtt_topic, mqtt_payload.to_dict())
-            self.logger.info(f"MQTT 메시지 전송 성공: {self.name} = {new_status}")
+            # self.logger.info(f"MQTT 메시지 전송 성공: {self.name} = {new_status}")
         except Exception as e:
             self.logger.error(f"MQTT 메시지 전송 실패: {str(e)}")
             raise

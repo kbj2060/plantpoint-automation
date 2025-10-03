@@ -90,12 +90,9 @@ class ThreadManager:
                 next_change_time
             ])
 
-        header = f"자동화 상태 리포트 - {current_time}"
-        border_length = len(header) + 4
-
-        print(f"\n╔{'═' * border_length}╗")
-        print(f"║  {header}  ║")
-        print(f"╚{'═' * border_length}╝\n")
+        print(f"\n╔{'═' * 58}╗")
+        print(f"║  자동화 상태 리포트 - {current_time}                           ║")
+        print(f"╚{'═' * 58}╝\n")
         print(tabulate(
             status_data,
             headers=["Device", "Category", "Active", "Status", "Next Change"],
