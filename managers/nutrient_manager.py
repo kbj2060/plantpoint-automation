@@ -147,10 +147,9 @@ class NutrientManager:
         """Map module type to sensor name."""
         return self.SENSOR_NAME_MAPPING.get(moduletype.upper(), moduletype.lower())
 
-    def adjust_nutrients(self) -> None:
+    def monitor_sensors(self) -> None:
         """
-        Main loop for nutrient adjustment.
-        Reads sensors and checks safety limits.
+        센서 모니터링 루프 - 센서 값을 읽고 출력/전송
         """
         try:
             readings = self.read_sensors()
@@ -167,7 +166,7 @@ class NutrientManager:
                     pass
 
         except Exception as e:
-            custom_logger.error(f"Error in adjust_nutrients: {e}")
+            custom_logger.error(f"Error in monitor_sensors: {e}")
 
     def _print_sensor_table(self, readings: Dict[str, float]) -> None:
         """
@@ -279,6 +278,366 @@ class NutrientManager:
             except Exception as e:
                 custom_logger.error(f"{sensor_name} 데이터 전송 실패: {e}")
 
+    def adjust_nutrients(
+        self,
+        nutrient_a_amount: float,
+        nutrient_b_amount: float,
+        mixing_duration: float = 60.0
+    ) -> bool:
+        """
+        순환식 양액 교체 프로세스 - 한 주기가 끝났을 때 물 전체를 교체
+
+        프로세스:
+        1. 탱크 아래 밸브를 켜서 물 비우기 수위까지 배수
+        2. 급수 밸브를 열어 물 채우기 수위까지 물 주입
+        3. A양액 주입 (워터펌프 + 유량센서로 제어)
+        4. 교반기로 양액 혼합
+        5. B양액 주입 (워터펌프 + 유량센서로 제어)
+        6. 교반기로 양액 혼합
+
+        Args:
+            nutrient_a_amount: A양액 주입량 (mL)
+            nutrient_b_amount: B양액 주입량 (mL)
+            mixing_duration: 교반 시간 (초, 기본값: 60초)
+
+        Returns:
+            bool: 프로세스 성공 여부
+            
+        필요한 디바이스/센서:
+            drain_valve: 배수 밸브
+            fill_valve: 급수 밸브
+            water_level: 수위 센서 (1개, 디지털)
+            nutrient_a_pump: A양액 펌프
+            nutrient_b_pump: B양액 펌프
+            nutrient_a_flow: A양액 유량센서
+            nutrient_b_flow: B양액 유량센서
+            mixer: 교반기
+        """
+        try:
+            custom_logger.info("=== 양액 교체 프로세스 시작 ===")
+
+            # 1. 물 비우기
+            if not self._drain_water():
+                custom_logger.error("물 비우기 실패")
+                return False
+
+            # 2. 물 채우기 대기
+            if not self._wait_for_water_fill():
+                custom_logger.error("물 채우기 대기 실패")
+                return False
+
+            # 3. A양액 주입
+            if not self._inject_nutrient('A', nutrient_a_amount):
+                custom_logger.error("A양액 주입 실패")
+                return False
+
+            # 4. A양액 혼합
+            if not self._mix_nutrients(mixing_duration):
+                custom_logger.error("A양액 혼합 실패")
+                return False
+
+            # 5. B양액 주입
+            if not self._inject_nutrient('B', nutrient_b_amount):
+                custom_logger.error("B양액 주입 실패")
+                return False
+
+            # 6. B양액 혼합
+            if not self._mix_nutrients(mixing_duration):
+                custom_logger.error("B양액 혼합 실패")
+                return False
+
+            custom_logger.info("=== 양액 교체 프로세스 완료 ===")
+            return True
+
+        except Exception as e:
+            custom_logger.error(f"양액 교체 프로세스 중 오류 발생: {e}")
+            return False
+
+    def _drain_water(self) -> bool:
+        """
+        물 비우기 - 탱크 아래 밸브를 켜서 물 배수
+
+        수위 센서 동작:
+        - 아래 수위 (물 적음): 1
+        - 위 수위 (물 많음): 0
+
+        Returns:
+            bool: 성공 여부
+        """
+        try:
+            custom_logger.info("1단계: 물 비우기 시작")
+
+            # 배수 밸브 디바이스 찾기
+            drain_valve = self._get_machine_by_name("drain_valve")
+            if not drain_valve:
+                custom_logger.error("배수 밸브를 찾을 수 없습니다")
+                return False
+
+            # 물 수위 센서 찾기 (1=아래 수위, 0=위 수위)
+            water_level_sensor = self._get_sensor_by_name("water_level")
+
+            # 배수 밸브 열기
+            self._control_machine(drain_valve, 1)
+            custom_logger.info("배수 밸브 열림")
+
+            # 물 비우기 수위까지 대기 (센서값 1이 될 때까지 = 아래 수위)
+            start_time = time.time()
+            timeout = 300  # 5분 타임아웃
+
+            while time.time() - start_time < timeout:
+                if water_level_sensor:
+                    water_level = self._read_sensor_value(water_level_sensor)
+                    if water_level == 1:  # 아래 수위 도달 (물 비워짐)
+                        custom_logger.info("비우기 수위 도달 (센서: 아래 수위)")
+                        break
+                time.sleep(1)
+            else:
+                custom_logger.warning("물 비우기 타임아웃 - 센서 확인 필요")
+
+            # 배수 밸브 닫기
+            self._control_machine(drain_valve, 0)
+            custom_logger.info("배수 밸브 닫힘 - 물 비우기 완료")
+
+            return True
+
+        except Exception as e:
+            custom_logger.error(f"물 비우기 중 오류: {e}")
+            return False
+
+    def _wait_for_water_fill(self) -> bool:
+        """
+        물 채우기 - 급수 밸브를 열어 물탱크에 물 주입
+
+        수위 센서 동작:
+        - 아래 수위 (물 적음): 1
+        - 위 수위 (물 많음): 0
+
+        Returns:
+            bool: 성공 여부
+        """
+        try:
+            custom_logger.info("2단계: 물 채우기 시작")
+
+            # 급수 밸브 디바이스 찾기
+            fill_valve = self._get_machine_by_name("fill_valve")
+            if not fill_valve:
+                custom_logger.error("급수 밸브를 찾을 수 없습니다")
+                return False
+
+            # 물 수위 센서 찾기 (1=아래 수위, 0=위 수위)
+            water_level_sensor = self._get_sensor_by_name("water_level")
+
+            # 급수 밸브 열기
+            self._control_machine(fill_valve, 1)
+            custom_logger.info("급수 밸브 열림")
+
+            # 채우기 수위까지 대기 (센서값 0이 될 때까지 = 위 수위)
+            start_time = time.time()
+            timeout = 600  # 10분 타임아웃
+
+            while time.time() - start_time < timeout:
+                if water_level_sensor:
+                    water_level = self._read_sensor_value(water_level_sensor)
+                    if water_level == 0:  # 위 수위 도달 (물 채워짐)
+                        custom_logger.info("채우기 수위 도달 (센서: 위 수위)")
+                        break
+                time.sleep(2)
+            else:
+                custom_logger.error("물 채우기 타임아웃")
+                # 타임아웃 시에도 밸브는 닫아야 함
+                self._control_machine(fill_valve, 0)
+                return False
+
+            # 급수 밸브 닫기
+            self._control_machine(fill_valve, 0)
+            custom_logger.info("급수 밸브 닫힘 - 물 채우기 완료")
+
+            return True
+
+        except Exception as e:
+            custom_logger.error(f"물 채우기 중 오류: {e}")
+            # 예외 발생 시에도 밸브 닫기 시도
+            try:
+                fill_valve = self._get_machine_by_name("fill_valve")
+                if fill_valve:
+                    self._control_machine(fill_valve, 0)
+            except:
+                pass
+            return False
+
+    def _inject_nutrient(self, nutrient_type: str, amount: float) -> bool:
+        """
+        양액 주입 - 워터펌프와 유량센서로 양액 주입
+
+        Args:
+            nutrient_type: 양액 종류 ('A' 또는 'B')
+            amount: 주입량 (mL)
+
+        Returns:
+            bool: 성공 여부
+        """
+        try:
+            custom_logger.info(f"{nutrient_type}양액 주입 시작 (목표: {amount}mL)")
+
+            # 워터펌프와 유량센서 찾기
+            pump_name = f"nutrient_{nutrient_type.lower()}_pump"
+            flow_sensor_name = f"nutrient_{nutrient_type.lower()}_flow"
+
+            pump = self._get_machine_by_name(pump_name)
+            if not pump:
+                custom_logger.error(f"{pump_name}을 찾을 수 없습니다")
+                return False
+
+            flow_sensor = self._get_sensor_by_name(flow_sensor_name)
+
+            # 워터펌프 켜기
+            self._control_machine(pump, 1)
+            custom_logger.info(f"{pump_name} 가동 시작")
+
+            # 유량 체크
+            total_flow = 0.0  # mL
+            start_time = time.time()
+            timeout = 300  # 5분 타임아웃
+            last_check_time = start_time
+
+            while time.time() - start_time < timeout:
+                current_time = time.time()
+
+                if flow_sensor:
+                    flow_rate = self._read_sensor_value(flow_sensor)  # mL/min
+                    if flow_rate is not None:
+                        # 경과 시간 동안 주입된 양 계산
+                        time_delta = current_time - last_check_time
+                        total_flow += (flow_rate / 60.0) * time_delta  # mL
+
+                        custom_logger.debug(f"{nutrient_type}양액 주입량: {total_flow:.1f}mL / {amount}mL")
+
+                        if total_flow >= amount:
+                            break
+
+                last_check_time = current_time
+                time.sleep(0.5)
+
+            # 워터펌프 끄기
+            self._control_machine(pump, 0)
+            custom_logger.info(f"{pump_name} 정지 - {nutrient_type}양액 주입 완료 ({total_flow:.1f}mL)")
+
+            return total_flow >= amount * 0.95  # 95% 이상 주입되면 성공
+
+        except Exception as e:
+            custom_logger.error(f"{nutrient_type}양액 주입 중 오류: {e}")
+            return False
+
+    def _mix_nutrients(self, duration: float) -> bool:
+        """
+        양액 혼합 - 교반기를 가동하여 양액 혼합
+
+        Args:
+            duration: 교반 시간 (초)
+
+        Returns:
+            bool: 성공 여부
+        """
+        try:
+            custom_logger.info(f"양액 혼합 시작 ({duration}초)")
+
+            # 교반기 찾기
+            mixer = self._get_machine_by_name("mixer")
+            if not mixer:
+                custom_logger.error("교반기를 찾을 수 없습니다")
+                return False
+
+            # 교반기 켜기
+            self._control_machine(mixer, 1)
+            custom_logger.info("교반기 가동")
+
+            # 지정된 시간 동안 대기
+            time.sleep(duration)
+
+            # 교반기 끄기
+            self._control_machine(mixer, 0)
+            custom_logger.info("교반기 정지 - 혼합 완료")
+
+            return True
+
+        except Exception as e:
+            custom_logger.error(f"양액 혼합 중 오류: {e}")
+            return False
+
+    def _get_machine_by_name(self, name: str):
+        """
+        이름으로 machine 찾기
+
+        Args:
+            name: machine 이름
+
+        Returns:
+            Machine object or None
+        """
+        if not self.store or not self.store.machines:
+            return None
+
+        for machine in self.store.machines:
+            if machine.name.lower() == name.lower():
+                return machine
+
+        return None
+
+    def _get_sensor_by_name(self, name: str):
+        """
+        이름으로 sensor 찾기 (placeholder)
+
+        Args:
+            name: sensor 이름
+
+        Returns:
+            Sensor object or None
+        """
+        # TODO: store에 sensors 리스트가 있다면 구현
+        custom_logger.warning(f"Sensor lookup not implemented: {name}")
+        return None
+
+    def _control_machine(self, machine, status: int) -> None:
+        """
+        Machine 제어 - MQTT로 제어 명령 전송
+
+        Args:
+            machine: Machine 객체
+            status: 0 (OFF) 또는 1 (ON)
+        """
+        try:
+            topic = machine.mqtt_topic
+            payload = {
+                "pattern": topic,
+                "data": {
+                    "name": machine.name,
+                    "status": status
+                }
+            }
+
+            mqtt.publish_message(topic, payload)
+            machine.set_status(status)
+
+            action = "ON" if status == 1 else "OFF"
+            custom_logger.info(f"{machine.name} {action}")
+
+        except Exception as e:
+            custom_logger.error(f"Machine 제어 중 오류: {e}")
+
+    def _read_sensor_value(self, sensor) -> Optional[float]:
+        """
+        센서 값 읽기 (placeholder)
+
+        Args:
+            sensor: Sensor 객체
+
+        Returns:
+            float or None
+        """
+        # TODO: 실제 센서 읽기 구현
+        custom_logger.warning("Sensor read not implemented")
+        return None
+
     def adjust_ph(self) -> None:
         """Adjust pH level (placeholder for future implementation)."""
         custom_logger.warning("pH adjustment not yet implemented")
@@ -294,7 +653,7 @@ class NutrientManager:
     def run(self) -> None:
         """Main loop execution."""
         custom_logger.info("NutrientManager running")
-        self.adjust_nutrients()
+        self.monitor_sensors()
 
     def stop(self) -> None:
         """Stop nutrient manager."""
