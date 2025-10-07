@@ -39,6 +39,8 @@ class NutrientManager:
     EC_MAX = 3.0
     TEMP_MIN = 15.0
     TEMP_MAX = 35.0
+    WATER_LEVEL_LOW = 1  # 아래 수위
+    WATER_LEVEL_HIGH = 0  # 위 수위
 
     def __init__(self, store, thread_manager: ThreadManager) -> None:
         self.store = store
@@ -105,43 +107,51 @@ class NutrientManager:
 
     def read_sensors(self) -> Dict[str, float]:
         """
-        Read all Atlas sensors and return sensor values.
+        Read all Atlas sensors and water level sensor, return sensor values.
 
         Returns:
             Dict[str, float]: Dictionary of sensor name to value.
         """
-        if not ATLAS_AVAILABLE or not self.atlas_devices:
-            return {}
-
         results = {}
 
+        # Read Atlas I2C sensors (pH, EC, water_temperature)
+        if ATLAS_AVAILABLE and self.atlas_devices:
+            try:
+                # Send read command to all devices
+                for dev in self.atlas_devices:
+                    dev.write("R")
+
+                # Wait for sensors to respond
+                time.sleep(AtlasI2C.LONG_TIMEOUT)
+
+                # Read responses
+                for dev in self.atlas_devices:
+                    response_str = dev.read()
+
+                    try:
+                        # Parse response (format: "Success <device_info>: <value>")
+                        value_str = response_str.split(':')[-1].strip().split('\x00')[0]
+                        value = float(value_str)
+                        sensor_name = self._get_sensor_name(dev.moduletype)
+                        results[sensor_name] = value
+                    except (ValueError, IndexError) as err:
+                        custom_logger.error(f"Error reading {dev.moduletype}: {err}")
+
+            except Exception as e:
+                custom_logger.error(f"Error reading Atlas sensors: {e}")
+
+        # Read water level sensor
         try:
-            # Send read command to all devices
-            for dev in self.atlas_devices:
-                dev.write("R")
-
-            # Wait for sensors to respond
-            time.sleep(AtlasI2C.LONG_TIMEOUT)
-
-            # Read responses
-            for dev in self.atlas_devices:
-                response_str = dev.read()
-
-                try:
-                    # Parse response (format: "Success <device_info>: <value>")
-                    value_str = response_str.split(':')[-1].strip().split('\x00')[0]
-                    value = float(value_str)
-                    sensor_name = self._get_sensor_name(dev.moduletype)
-                    results[sensor_name] = value
-                except (ValueError, IndexError) as err:
-                    custom_logger.error(f"Error reading {dev.moduletype}: {err}")
-
-            self.last_readings = results
-            return results
-
+            water_level_sensor = self._get_sensor_by_name("water_level")
+            if water_level_sensor:
+                water_level = self._read_sensor_value(water_level_sensor)
+                if water_level is not None:
+                    results["water_level"] = water_level
         except Exception as e:
-            custom_logger.error(f"Error reading sensors: {e}")
-            return {}
+            custom_logger.error(f"Error reading water level sensor: {e}")
+
+        self.last_readings = results
+        return results
 
     def _get_sensor_name(self, moduletype: str) -> str:
         """Map module type to sensor name."""
@@ -193,6 +203,11 @@ class NutrientManager:
                 "name": "Water Temp (°C)",
                 "min": self.TEMP_MIN,
                 "max": self.TEMP_MAX
+            },
+            "water_level": {
+                "name": "Water Level",
+                "min": self.WATER_LEVEL_HIGH,
+                "max": self.WATER_LEVEL_LOW
             }
         }
 
@@ -201,9 +216,17 @@ class NutrientManager:
             if sensor_name in sensor_info:
                 info = sensor_info[sensor_name]
                 display_name = info["name"]
-                range_str = f"{info['min']:.1f} ~ {info['max']:.1f}"
-                status = self._get_sensor_status(sensor_name, value)
-                table_data.append([display_name, f"{value:.2f}", range_str, status])
+
+                # Water level은 디지털 센서이므로 다르게 표시
+                if sensor_name == "water_level":
+                    value_str = "HIGH" if value == 0 else "LOW"
+                    range_str = "0=HIGH / 1=LOW"
+                    status = self._get_sensor_status(sensor_name, value)
+                    table_data.append([display_name, value_str, range_str, status])
+                else:
+                    range_str = f"{info['min']:.1f} ~ {info['max']:.1f}"
+                    status = self._get_sensor_status(sensor_name, value)
+                    table_data.append([display_name, f"{value:.2f}", range_str, status])
 
         print(f"\n╔{'═' * 58}╗")
         print(f"║  영양소 센서 상태 - {current_time}                             ║")
@@ -241,6 +264,13 @@ class NutrientManager:
                 return "✓ 정상"
             else:
                 return "⚠ 경고"
+        elif sensor_name == "water_level":
+            if value == self.WATER_LEVEL_HIGH:
+                return "✓ HIGH (Full)"
+            elif value == self.WATER_LEVEL_LOW:
+                return "⚠ LOW"
+            else:
+                return "⚠ Invalid"
         return "-"
 
     def _publish_sensor_data(self, readings: Dict[str, float]) -> None:
@@ -278,14 +308,16 @@ class NutrientManager:
             except Exception as e:
                 custom_logger.error(f"{sensor_name} 데이터 전송 실패: {e}")
 
-    def adjust_nutrients(
+    def adjust_water_tank(
         self,
         nutrient_a_amount: float,
         nutrient_b_amount: float,
         mixing_duration: float = 60.0
     ) -> bool:
         """
-        순환식 양액 교체 프로세스 - 한 주기가 끝났을 때 물 전체를 교체
+        순환식 양액 교체 프로세스 - water_level이 1(LOW)로 바뀌었을 때 시작
+
+        시작 조건: water_level 센서가 1 (아래 수위, LOW)
 
         프로세스:
         1. 탱크 아래 밸브를 켜서 물 비우기 수위까지 배수
@@ -302,7 +334,7 @@ class NutrientManager:
 
         Returns:
             bool: 프로세스 성공 여부
-            
+
         필요한 디바이스/센서:
             drain_valve: 배수 밸브
             fill_valve: 급수 밸브
@@ -314,7 +346,18 @@ class NutrientManager:
             mixer: 교반기
         """
         try:
-            custom_logger.info("=== 양액 교체 프로세스 시작 ===")
+            # 시작 조건 체크: water_level이 1(LOW)인지 확인
+            water_level_sensor = self._get_sensor_by_name("water_level")
+            if not water_level_sensor:
+                custom_logger.error("수위 센서를 찾을 수 없습니다")
+                return False
+
+            current_level = self._read_sensor_value(water_level_sensor)
+            if current_level != self.WATER_LEVEL_LOW:
+                custom_logger.warning(f"수위가 아직 LOW 상태가 아닙니다 (현재: {current_level})")
+                return False
+
+            custom_logger.info("=== 양액 교체 프로세스 시작 (water_level: LOW) ===")
 
             # 1. 물 비우기
             if not self._drain_water():
@@ -654,6 +697,10 @@ class NutrientManager:
         """Main loop execution."""
         custom_logger.info("NutrientManager running")
         self.monitor_sensors()
+
+        self.adjust_water_tank(100, 100)
+        
+        custom_logger.info("양액 교체 성공")
 
     def stop(self) -> None:
         """Stop nutrient manager."""

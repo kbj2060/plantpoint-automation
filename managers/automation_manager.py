@@ -51,6 +51,10 @@ class AutomationManager:
 
                 automation.set_machine(machine)
 
+                # Target 자동화인 경우 제어 장치 로드
+                if hasattr(automation, '_load_control_devices'):
+                    automation._load_control_devices(self.store)
+
                 thread = self.thread_manager.create_automation_thread(automation)
                 thread.start()
                 self.thread_manager.automation_threads.append(thread)
