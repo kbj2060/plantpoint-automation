@@ -27,6 +27,13 @@ except ImportError:
     custom_logger.warning("Adafruit_DHT module not available. DHT22 readings will be simulated.")
     DHT_AVAILABLE = False
 
+try:
+    import mh_z19
+    CO2_AVAILABLE = True
+except ImportError:
+    custom_logger.warning("mh_z19 module not available. CO2 readings will be simulated.")
+    CO2_AVAILABLE = False
+
 
 class NutrientManager:
     """
@@ -42,6 +49,14 @@ class NutrientManager:
     # DHT22 센서 설정
     DHT_SENSOR = Adafruit_DHT.DHT22
     DHT_PIN = 4  # GPIO 핀 번호 (필요에 따라 변경)
+    
+    # MH-Z19E CO2 센서 설정
+    # i3 Interlink 쉴드 사용 시 UART 포트 확인 필요
+    CO2_SENSOR_PORT = None  # 자동 감지 시도
+    # i3 Interlink 쉴드 사용 시 다음 중 하나로 설정:
+    # CO2_SENSOR_PORT = '/dev/ttyAMA0'  # 기본 UART
+    # CO2_SENSOR_PORT = '/dev/ttyAMA1'  # 추가 UART (쉴드에 따라 다름)
+    # CO2_SENSOR_PORT = '/dev/serial0'  # 심볼릭 링크
 
     # Safety limits
     PH_MIN = 5.5
@@ -50,6 +65,8 @@ class NutrientManager:
     EC_MAX = 3.0
     TEMP_MIN = 15.0
     TEMP_MAX = 35.0
+    CO2_MIN = 300.0  # CO2 최소값 (ppm)
+    CO2_MAX = 2000.0  # CO2 최대값 (ppm)
     WATER_LEVEL_LOW = 1  # 아래 수위
     WATER_LEVEL_HIGH = 0  # 위 수위
 
@@ -168,6 +185,13 @@ class NutrientManager:
         except Exception as e:
             custom_logger.error(f"Error reading DHT22 sensor: {e}")
 
+        # Read MH-Z19E CO2 sensor
+        try:
+            co2_result = self._read_co2_sensor()
+            results.update(co2_result)
+        except Exception as e:
+            custom_logger.error(f"Error reading CO2 sensor: {e}")
+
         self.last_readings = results
         return results
 
@@ -219,6 +243,45 @@ class NutrientManager:
             # 오류 시 기본값 반환
             results["temperature"] = 25.0
             results["humidity"] = 50.0
+            
+        return results
+
+    def _read_co2_sensor(self) -> Dict[str, float]:
+        """
+        MH-Z19E CO2 센서에서 CO2 농도 읽기
+        
+        Returns:
+            Dict[str, float]: {'co2': CO2값}
+        """
+        results = {}
+        
+        if not CO2_AVAILABLE:
+            # 시뮬레이션 모드
+            import random
+            results["co2"] = round(random.uniform(400.0, 1000.0), 1)
+            custom_logger.debug("CO2 simulation mode - using random values")
+            return results
+        
+        try:
+            # MH-Z19E 센서 읽기
+            if self.CO2_SENSOR_PORT:
+                co2_value = mh_z19.read(self.CO2_SENSOR_PORT)
+            else:
+                # 포트가 None이면 라이브러리가 자동으로 적절한 UART 포트를 감지
+                co2_value = mh_z19.read()
+            
+            if co2_value is not None and 0 <= co2_value <= 10000:  # 유효한 범위 확인
+                results["co2"] = round(co2_value, 1)
+                custom_logger.debug(f"CO2 읽기 성공: {co2_value:.1f} ppm")
+            else:
+                custom_logger.warning(f"CO2 읽기 실패 또는 유효하지 않은 값: {co2_value}")
+                # 실패 시 기본값 반환
+                results["co2"] = 400.0
+                
+        except Exception as e:
+            custom_logger.error(f"CO2 센서 읽기 중 오류: {e}")
+            # 오류 시 기본값 반환
+            results["co2"] = 400.0
             
         return results
 
@@ -278,6 +341,11 @@ class NutrientManager:
                 "name": "Humidity (%)",
                 "min": 30.0,
                 "max": 90.0
+            },
+            "co2": {
+                "name": "CO2 (ppm)",
+                "min": self.CO2_MIN,
+                "max": self.CO2_MAX
             },
             "water_level": {
                 "name": "Water Level",
@@ -349,6 +417,11 @@ class NutrientManager:
                 return "✓ 정상"
             else:
                 return "⚠ 경고"
+        elif sensor_name == "co2":
+            if self.CO2_MIN <= value <= self.CO2_MAX:
+                return "✓ 정상"
+            else:
+                return "⚠ 경고"
         elif sensor_name == "water_level":
             if value == self.WATER_LEVEL_HIGH:
                 return "✓ HIGH (Full)"
@@ -371,7 +444,8 @@ class NutrientManager:
             "ec": "environment/ec",
             "water_temperature": "environment/water_temperature",
             "temperature": "environment/temperature",
-            "humidity": "environment/humidity"
+            "humidity": "environment/humidity",
+            "co2": "environment/co2"
         }
 
         timestamp = time.time()
