@@ -43,12 +43,14 @@ class NutrientManager:
     SENSOR_NAME_MAPPING = {
         "RTD": "water_temperature",
         "PH": "ph",
-        "EC": "ec"
+        "EC": "ec",
+        "co2": "co2",
+        "temperature": "temperature"
     }
 
     # DHT22 센서 설정
     DHT_SENSOR = Adafruit_DHT.DHT22
-    DHT_PIN = 4  # GPIO 핀 번호 (필요에 따라 변경)
+    DHT_PIN = 26  # GPIO 핀 번호 (필요에 따라 변경)
     
     # MH-Z19E CO2 센서 설정
     # i3 Interlink 쉴드 사용 시 UART 포트 확인 필요
@@ -249,40 +251,48 @@ class NutrientManager:
     def _read_co2_sensor(self) -> Dict[str, float]:
         """
         MH-Z19E CO2 센서에서 CO2 농도 읽기
-        
+
         Returns:
             Dict[str, float]: {'co2': CO2값}
         """
         results = {}
-        
+
         if not CO2_AVAILABLE:
             # 시뮬레이션 모드
             import random
             results["co2"] = round(random.uniform(400.0, 1000.0), 1)
             custom_logger.debug("CO2 simulation mode - using random values")
             return results
-        
+
         try:
-            # MH-Z19E 센서 읽기
+            # MH-Z19E 센서 읽기 - mh_z19.read_all()는 dict를 반환함
+            # read_all()은 {'co2': value, 'temperature': value, ...} 형태를 반환
             if self.CO2_SENSOR_PORT:
-                co2_value = mh_z19.read(self.CO2_SENSOR_PORT)
+                co2_data = mh_z19.read_all(serial_dev=self.CO2_SENSOR_PORT)
             else:
                 # 포트가 None이면 라이브러리가 자동으로 적절한 UART 포트를 감지
-                co2_value = mh_z19.read()
-            
-            if co2_value is not None and 0 <= co2_value <= 10000:  # 유효한 범위 확인
-                results["co2"] = round(co2_value, 1)
-                custom_logger.debug(f"CO2 읽기 성공: {co2_value:.1f} ppm")
+                co2_data = mh_z19.read_all()
+
+            # mh_z19.read_all()는 {'co2': value, 'temperature': value, ...} 형태의 dict를 반환
+            if co2_data and isinstance(co2_data, dict) and 'co2' in co2_data:
+                co2_value = co2_data['co2']
+
+                # 유효한 범위 확인 (0-10000 ppm)
+                if co2_value is not None and 0 <= co2_value <= 10000:
+                    results["co2"] = round(float(co2_value), 1)
+                    custom_logger.debug(f"CO2 읽기 성공: {co2_value:.1f} ppm")
+                else:
+                    custom_logger.warning(f"CO2 값이 유효하지 않은 범위: {co2_value}")
+                    results["co2"] = 0.0
             else:
-                custom_logger.warning(f"CO2 읽기 실패 또는 유효하지 않은 값: {co2_value}")
-                # 실패 시 기본값 반환
+                custom_logger.warning(f"CO2 센서 읽기 실패 또는 잘못된 응답 형식: {co2_data}")
                 results["co2"] = 0.0
-                
+
         except Exception as e:
             custom_logger.error(f"CO2 센서 읽기 중 오류: {e}")
             # 오류 시 기본값 반환
             results["co2"] = 0.0
-            
+
         return results
 
     def monitor_sensors(self) -> None:
@@ -859,7 +869,7 @@ class NutrientManager:
         custom_logger.info("NutrientManager running")
         self.monitor_sensors()
 
-        self.adjust_water_tank(100, 100)
+        #self.adjust_water_tank(100, 100)
         
         custom_logger.info("양액 교체 성공")
 

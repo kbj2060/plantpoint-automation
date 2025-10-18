@@ -39,7 +39,7 @@ class ThreadManager:
         def run_nutrient():
             try:
                 while not self.stop_event.is_set():
-                    nutrient_manager.adjust_nutrients()
+                    nutrient_manager.run()
                     self.stop_event.wait(60)
             except Exception as e:
                 custom_logger.error(f"영양소 스레드 오류 발생: {str(e)}")

@@ -34,7 +34,6 @@ def main() -> None:
             
         # 자동화 실행
         automation_manager.run()
-        
     except KeyboardInterrupt:
         custom_logger.info("\n프로그램 종료 요청")
     except Exception as e:

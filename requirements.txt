@@ -1,5 +1,5 @@
-Adafruit-DHT==1.4.1
-mh-z19==2.1.4
+Adafruit-DHT==1.4.0
+mh-z19==3.1.7
 async-timeout==5.0.1
 certifi==2024.12.14
 charset-normalizer==3.4.1
