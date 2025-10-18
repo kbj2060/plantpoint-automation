@@ -276,12 +276,12 @@ class NutrientManager:
             else:
                 custom_logger.warning(f"CO2 읽기 실패 또는 유효하지 않은 값: {co2_value}")
                 # 실패 시 기본값 반환
-                results["co2"] = 400.0
+                results["co2"] = 0.0
                 
         except Exception as e:
             custom_logger.error(f"CO2 센서 읽기 중 오류: {e}")
             # 오류 시 기본값 반환
-            results["co2"] = 400.0
+            results["co2"] = 0.0
             
         return results
 
