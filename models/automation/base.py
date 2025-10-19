@@ -131,9 +131,13 @@ class BaseAutomation(ABC):
                 new_settings = self.filter_settings_dict(payload_data.data.value)
 
                 if new_settings:
-                    self._init_from_settings(new_settings)
-                    self.control()
-                    
+                    # update_settings 메서드가 있으면 사용 (타이머 재시작 포함)
+                    if hasattr(self, 'update_settings'):
+                        self.update_settings(new_settings)
+                    else:
+                        self._init_from_settings(new_settings)
+                        self.control()
+
                 self.logger.info(
                     f"Device {self.name}: 자동화 설정 업데이트 "
                     f"(활성화: {self.active}, 설정: {new_settings})"

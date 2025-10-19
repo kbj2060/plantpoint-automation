@@ -58,12 +58,19 @@ class RangeAutomation(BaseAutomation):
 
         self.timers = RangeTimerManager()
 
+    def update_settings(self, settings: dict) -> None:
+        """설정 업데이트 및 타이머 재시작"""
+        self._init_from_settings(settings)
+        if self.timers:
+            self.timers.cancel_all()  # 기존 타이머 취소
+        self.control()  # 새로운 설정으로 제어 시작
+
     def _init_from_settings(self, settings: dict) -> None:
         """Range 설정 초기화"""
         try:
             self.start_time = settings.get('start_time', '00:00')
             self.end_time = settings.get('end_time', '00:00')
-            
+
             # self.logger.info(
             #     f"Range 자동화 설정 초기화: "
             #     f"시작={self.start_time}, 종료={self.end_time}"
