@@ -5,14 +5,11 @@ from models.automation import create_automation
 from managers.thread_manager import ThreadManager
 from constants import TREAD_DURATION_LIMIT
 from tabulate import tabulate
-import requests
-import os
 
 class AutomationManager:
     def __init__(self, store: Store, thread_manager: ThreadManager):
         self.store = store
         self.thread_manager = thread_manager
-        self.backend_url = os.getenv('BACKEND_URL', 'http://backend:3000')
 
     def initialize(self):
         """자동화 초기화"""
@@ -82,26 +79,6 @@ class AutomationManager:
 
         custom_logger.info(f"\n✓ 생성된 자동화 스레드 수: {len(self.thread_manager.automation_threads)}")
 
-    def _check_auto_control_status(self) -> bool:
-        """자동 제어 상태 확인 - API를 통해 automation 상태 확인"""
-        try:
-            response = requests.get(f"{self.backend_url}/automations/status", timeout=5)
-            if response.status_code == 200:
-                data = response.json()
-                return data.get('hasActiveAutomations', False)
-            else:
-                custom_logger.warning(f"자동화 상태 확인 실패: {response.status_code}")
-                return True  # 실패 시 기본값으로 True 반환 (기존 동작 유지)
-        except Exception as e:
-            custom_logger.error(f"자동화 상태 확인 중 오류: {str(e)}")
-            return True  # 실패 시 기본값으로 True 반환 (기존 동작 유지)
-
-    def _pause_automations(self):
-        """자동화 일시 정지 - 메모리에서만 비활성화"""
-        for automation in self.thread_manager.automation_instances.values():
-            if automation.active:
-                automation.active = False
-                custom_logger.info(f"자동화 일시 정지: {automation.name}")
 
     def run(self):
         """메인 루프 실행"""
@@ -110,20 +87,11 @@ class AutomationManager:
             return
 
         custom_logger.info(f"\n✓ 자동화 스레드 {len(self.thread_manager.automation_threads)}개 시작 완료\n")
-        
+
         try:
             while not self.thread_manager.stop_event.is_set():
-                # 자동 제어 상태 확인
-                auto_control_enabled = self._check_auto_control_status()
-                
-                if not auto_control_enabled:
-                    # 자동 제어가 비활성화된 경우 자동화 일시 정지
-                    self._pause_automations()
-                    custom_logger.info("자동 제어가 비활성화되어 자동화를 일시 정지합니다.")
-                else:
-                    # 자동 제어가 활성화된 경우 자동화 실행
-                    self.thread_manager.monitor_threads()
-                
+                # 자동화 스레드 모니터링
+                self.thread_manager.monitor_threads()
                 self.thread_manager.stop_event.wait(TREAD_DURATION_LIMIT)
         except KeyboardInterrupt:
             self.stop()

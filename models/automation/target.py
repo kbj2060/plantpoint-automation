@@ -166,21 +166,25 @@ class TargetAutomation(BaseAutomation):
 
             if payload_data.data.name == self.name:
                 self.value = float(payload_data.data.value)
-                
+
                 self.logger.info(
                     f"Device {self.name}: 환경 센서값 수신 "
                     f"(값: {self.value})"
                 )
-                
-                try:
-                    controlled_machine = self.control()
-                    if controlled_machine:
-                        self.logger.info(
-                            f"자동화 실행 성공: {self.name} "
-                            f"(현재값: {self.value}, 상태: {self.status})"
-                        )
-                except Exception as e:
-                    self.logger.error(f"자동화 실행 중 오류 발생: {str(e)}")
+
+                # 자동화가 활성화되어 있을 때만 제어 실행
+                if self.active:
+                    try:
+                        controlled_machine = self.control()
+                        if controlled_machine:
+                            self.logger.info(
+                                f"자동화 실행 성공: {self.name} "
+                                f"(현재값: {self.value}, 상태: {self.status})"
+                            )
+                    except Exception as e:
+                        self.logger.error(f"자동화 실행 중 오류 발생: {str(e)}")
+                else:
+                    self.logger.debug(f"Device {self.name}: 자동화 비활성화 상태 - 제어 건너뛰기")
 
         except Exception as e:
             self.logger.error(f"환경 센서값 메시지 처리 실패: {str(e)}") 

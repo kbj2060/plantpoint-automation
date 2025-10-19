@@ -112,6 +112,10 @@ class IntervalAutomation(BaseAutomation):
 
     def control(self) -> Optional[BaseMachine]:
         """주기적 제어 실행"""
+        # 자동화가 비활성화되면 제어하지 않음
+        if not self.active:
+            # self.logger.debug(f"자동화 비활성화: {self.name}")
+            return None
 
         try:
             now = datetime.now()
