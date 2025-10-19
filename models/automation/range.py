@@ -216,12 +216,17 @@ class RangeAutomation(BaseAutomation):
     def _handle_timer_event(self, turn_on: bool):
         """타이머 이벤트 처리"""
         try:
+            # 자동화가 비활성화되어 있으면 타이머 이벤트 무시
+            if not self.active:
+                self.logger.debug(f"자동화 비활성화 상태 - 타이머 이벤트 무시: {self.name}")
+                return
+
             self.update_device_status(turn_on)
             self.logger.info(
                 f"Range 타이머 실행: {self.name} "
                 f"({'ON' if turn_on else 'OFF'})"
             )
-            
+
             # 다음 주기 타이머 설정
             if not turn_on:  # 종료 타이머 실행 후
                 now = datetime.now()

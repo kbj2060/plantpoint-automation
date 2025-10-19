@@ -143,6 +143,11 @@ class IntervalAutomation(BaseAutomation):
         """OFF 타이머 예약"""
         def off_callback():
             try:
+                # 자동화가 비활성화되어 있으면 타이머 이벤트 무시
+                if not self.active:
+                    self.logger.debug(f"자동화 비활성화 상태 - OFF 타이머 이벤트 무시: {self.name}")
+                    return
+
                 self.update_device_status(False)
                 self.state.update_toggle_time(datetime.now())
                 self.logger.info(f"Device {self.name}: duration({self.duration}초) 경과로 OFF")
@@ -157,6 +162,11 @@ class IntervalAutomation(BaseAutomation):
         """ON 타이머 예약"""
         def on_callback():
             try:
+                # 자동화가 비활성화되어 있으면 타이머 이벤트 무시
+                if not self.active:
+                    self.logger.debug(f"자동화 비활성화 상태 - ON 타이머 이벤트 무시: {self.name}")
+                    return
+
                 self.update_device_status(True)
                 self.state.update_toggle_time(datetime.now())
                 self.logger.info(f"Device {self.name}: interval({self.interval}초) 경과로 ON")
