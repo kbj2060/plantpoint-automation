@@ -198,6 +198,10 @@ class IntervalAutomation(BaseAutomation):
 
     def _handle_first_run(self, current_time: datetime) -> BaseMachine:
         """첫 실행 처리 - Redis의 마지막 상태와 경과 시간 기준 (status True/False 기반)"""
+        # 자동화가 비활성화되어 있으면 제어하지 않음
+        if not self.active:
+            return self.get_machine()
+
         try:
             # Redis에서 interval 상태 가져오기
             interval_states = redis.get('interval_automated_switches') or []

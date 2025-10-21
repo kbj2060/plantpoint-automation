@@ -27,11 +27,13 @@ def main() -> None:
             custom_logger.error("자동화 매니저 초기화 실패")
             return
 
-        # NutrientManager 초기화 및 실행
+        # NutrientManager 초기화 및 스레드 시작
         nutrient_manager = NutrientManager(store, thread_manager)
-        if not nutrient_manager.initialize():
-            custom_logger.info("양액 모니터링 초기화 실패")
-            
+        if nutrient_manager.initialize():
+            nutrient_manager.start()  # 센서 모니터링 스레드 시작
+        else:
+            custom_logger.warning("센서 모니터링 초기화 실패")
+
         # 자동화 실행
         automation_manager.run()
     except KeyboardInterrupt:

@@ -83,6 +83,10 @@ class Settings:
         self.current_buffer_size: int = self._get_int("CURRENT_BUFFER_SIZE", 5)
         self.target_required_count: int = self._get_int("TARGET_REQUIRED_COUNT", 3)
 
+        # Thread Interval Configuration
+        self.automation_interval: int = self._get_positive_int("AUTOMATION_INTERVAL", 60)  # 자동화 실행 주기 (초)
+        self.sensor_read_interval: int = self._get_positive_int("SENSOR_READ_INTERVAL", 300)  # 센서값 읽기 주기 (초)
+
     def _get_required(self, key: str) -> str:
         """Get required environment variable."""
         value = os.getenv(key)

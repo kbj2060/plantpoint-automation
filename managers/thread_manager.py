@@ -6,6 +6,7 @@ from models.automation.base import BaseAutomation
 from threading import Event
 from tabulate import tabulate
 from datetime import datetime
+from config import settings
 
 class ThreadManager:
     def __init__(self):
@@ -24,7 +25,7 @@ class ThreadManager:
             try:
                 while not self.stop_event.is_set():
                     automation.control()
-                    self.stop_event.wait(60)
+                    self.stop_event.wait(settings.automation_interval)
             except Exception as e:
                 custom_logger.error(f"자동화 스레드 오류 발생: {str(e)}")
 
@@ -40,7 +41,7 @@ class ThreadManager:
             try:
                 while not self.stop_event.is_set():
                     nutrient_manager.run()
-                    self.stop_event.wait(60)
+                    self.stop_event.wait(settings.sensor_read_interval)
             except Exception as e:
                 custom_logger.error(f"영양소 스레드 오류 발생: {str(e)}")
 

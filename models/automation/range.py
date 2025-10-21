@@ -76,8 +76,8 @@ class RangeAutomation(BaseAutomation):
             #     f"시작={self.start_time}, 종료={self.end_time}"
             # )
 
-            # 타이머 초기 설정
-            if self.name:  # machine이 설정된 후에만 실행
+            # 타이머 초기 설정 (자동화가 활성화되어 있을 때만)
+            if self.name and self.active:  # machine이 설정되고 자동화가 활성화된 경우에만 실행
                 now = datetime.now()
                 today = now.date()
                 

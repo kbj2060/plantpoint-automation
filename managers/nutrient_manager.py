@@ -82,24 +82,37 @@ class NutrientManager:
 
     def initialize(self) -> bool:
         """
-        Initialize nutrient manager and discover Atlas I2C sensors.
+        Initialize nutrient manager and discover available sensors.
 
         Returns:
             bool: True if initialization successful, False otherwise.
         """
-        if not ATLAS_AVAILABLE:
-            custom_logger.warning("Atlas I2C not available. Running in simulation mode.")
-            return False
-
         try:
-            self._discover_atlas_devices()
-            if self.atlas_devices:
-                custom_logger.info(f"Found {len(self.atlas_devices)} Atlas sensor(s)")
-                self._start_nutrient_threads()
-                return True
+            # Atlas I2C 센서 검색 시도 (선택사항)
+            if ATLAS_AVAILABLE:
+                self._discover_atlas_devices()
+                if self.atlas_devices:
+                    custom_logger.info(f"Found {len(self.atlas_devices)} Atlas sensor(s)")
+                else:
+                    custom_logger.info("No Atlas sensors found")
             else:
-                custom_logger.warning("No Atlas sensors found")
-                return False
+                custom_logger.info("Atlas I2C not available - skipping Atlas sensor detection")
+
+            # DHT22 센서 확인
+            if DHT_AVAILABLE:
+                custom_logger.info("DHT22 sensor available for temperature/humidity monitoring")
+            else:
+                custom_logger.info("DHT22 sensor not available - will use simulated values")
+
+            # CO2 센서 확인
+            if CO2_AVAILABLE:
+                custom_logger.info("CO2 sensor available")
+            else:
+                custom_logger.info("CO2 sensor not available - will use simulated values")
+
+            custom_logger.info("Sensor monitoring initialized successfully")
+            return True
+
         except Exception as e:
             custom_logger.error(f"Failed to initialize NutrientManager: {e}")
             return False
@@ -126,10 +139,6 @@ class NutrientManager:
 
     def _start_nutrient_threads(self) -> None:
         """Start nutrient monitoring threads."""
-        if not self.atlas_devices:
-            custom_logger.warning("No Atlas devices available. Cannot start nutrient threads.")
-            return
-
         nutrient_thread = self.thread_manager.create_nutrient_thread(self)
         self.thread_manager.nutrient_threads.append(nutrient_thread)
         nutrient_thread.start()
@@ -864,14 +873,22 @@ class NutrientManager:
         """Adjust temperature (placeholder for future implementation)."""
         custom_logger.warning("Temperature adjustment not yet implemented")
 
+    def start(self) -> None:
+        """센서 모니터링 스레드 시작"""
+        try:
+            self._start_nutrient_threads()
+            custom_logger.info("센서 모니터링 시작됨")
+        except Exception as e:
+            custom_logger.error(f"센서 모니터링 시작 실패: {e}")
+
     def run(self) -> None:
-        """Main loop execution."""
+        """Main loop execution - 스레드에서 호출되는 메서드"""
         custom_logger.info("NutrientManager running")
         self.monitor_sensors()
 
         #self.adjust_water_tank(100, 100)
-        
-        custom_logger.info("양액 교체 성공")
+
+        custom_logger.info("센서 모니터링 완료")
 
     def stop(self) -> None:
         """Stop nutrient manager."""
