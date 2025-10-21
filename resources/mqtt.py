@@ -6,6 +6,7 @@ from typing import Optional, Dict, Any
 import paho.mqtt.client as mqtt
 from logger.custom_logger import custom_logger
 from constants import MQTT_HOST, MQTT_PORT, MQTT_ID
+from settings.mqtt_topics import MQTTTopics
 
 # MQTT Connection return codes
 MQTT_RC_CODES = {
@@ -106,11 +107,7 @@ class MQTTClient:
             )
 
             # Subscribe to topics
-            topics = [
-                ("environment/#", 0),
-                ("automation/#", 0),
-                ("switch/#", 0),
-            ]
+            topics = [(topic, 0) for topic in MQTTTopics.SUBSCRIBED]
             self.client.subscribe(topics)
             custom_logger.info(
                 f"MQTT 토픽 구독: {', '.join([t[0] for t in topics])}"

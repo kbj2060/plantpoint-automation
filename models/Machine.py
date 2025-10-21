@@ -1,5 +1,6 @@
 from typing import Optional, List
 from datetime import datetime
+from settings.mqtt_topics import MQTTTopics
 
 
 class BaseMachine:
@@ -15,7 +16,7 @@ class BaseMachine:
     ) -> None:
         self.machine_id = machine_id
         self.name = name
-        self.mqtt_topic = f'switch/{name}' if name else None
+        self.mqtt_topic = MQTTTopics.switch(name) if name else None
         self.pin = pin
         self.status = status
         self.switch_created_at = switch_created_at
