@@ -181,11 +181,11 @@ class NutrientManager:
 
         # Read water level sensor
         try:
-            water_level_sensor = self._get_sensor_by_name("water_level")
+            water_level_sensor = self._get_sensor_by_name("waterlevel")
             if water_level_sensor:
                 water_level = self._read_sensor_value(water_level_sensor)
                 if water_level is not None:
-                    results["water_level"] = water_level
+                    results["waterlevel"] = water_level
         except Exception as e:
             custom_logger.error(f"Error reading water level sensor: {e}")
 
@@ -366,7 +366,7 @@ class NutrientManager:
                 "min": self.CO2_MIN,
                 "max": self.CO2_MAX
             },
-            "water_level": {
+            "waterlevel": {
                 "name": "Water Level",
                 "min": self.WATER_LEVEL_HIGH,
                 "max": self.WATER_LEVEL_LOW
@@ -380,7 +380,7 @@ class NutrientManager:
                 display_name = info["name"]
 
                 # Water level은 디지털 센서이므로 다르게 표시
-                if sensor_name == "water_level":
+                if sensor_name == "waterlevel":
                     value_str = "HIGH" if value == 0 else "LOW"
                     range_str = "0=HIGH / 1=LOW"
                     status = self._get_sensor_status(sensor_name, value)
@@ -527,7 +527,7 @@ class NutrientManager:
         """
         try:
             # 시작 조건 체크: water_level이 1(LOW)인지 확인
-            water_level_sensor = self._get_sensor_by_name("water_level")
+            water_level_sensor = self._get_sensor_by_name("waterlevel")
             if not water_level_sensor:
                 custom_logger.error("수위 센서를 찾을 수 없습니다")
                 return False
@@ -537,7 +537,7 @@ class NutrientManager:
                 custom_logger.warning(f"수위가 아직 LOW 상태가 아닙니다 (현재: {current_level})")
                 return False
 
-            custom_logger.info("=== 양액 교체 프로세스 시작 (water_level: LOW) ===")
+            custom_logger.info("=== 양액 교체 프로세스 시작 (waterlevel: LOW) ===")
 
             # 1. 물 비우기
             if not self._drain_water():
@@ -597,7 +597,7 @@ class NutrientManager:
                 return False
 
             # 물 수위 센서 찾기 (1=아래 수위, 0=위 수위)
-            water_level_sensor = self._get_sensor_by_name("water_level")
+            water_level_sensor = self._get_sensor_by_name("waterlevel")
 
             # 배수 밸브 열기
             self._control_machine(drain_valve, 1)
@@ -648,7 +648,7 @@ class NutrientManager:
                 return False
 
             # 물 수위 센서 찾기 (1=아래 수위, 0=위 수위)
-            water_level_sensor = self._get_sensor_by_name("water_level")
+            water_level_sensor = self._get_sensor_by_name("waterlevel")
 
             # 급수 밸브 열기
             self._control_machine(fill_valve, 1)
