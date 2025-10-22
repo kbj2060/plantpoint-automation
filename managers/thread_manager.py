@@ -12,6 +12,7 @@ class ThreadManager:
     def __init__(self):
         self.automation_threads: List[threading.Thread] = []
         self.nutrient_threads: List[threading.Thread] = []
+        self.current_monitor_threads: List[threading.Thread] = []
         self.stop_event = Event()
         self.automation_instances: Dict[str, BaseAutomation] = {}
         self.last_status_report = time.time()
@@ -48,6 +49,22 @@ class ThreadManager:
         return threading.Thread(
             target=run_nutrient,
             name="NutrientControl",
+            daemon=True
+        )
+
+    def create_current_monitor_thread(self, current_monitor_manager) -> threading.Thread:
+        """전류 모니터 스레드 생성"""
+        def run_current_monitor():
+            try:
+                while not self.stop_event.is_set():
+                    current_monitor_manager.run()
+                    self.stop_event.wait(settings.current_monitor_interval)
+            except Exception as e:
+                custom_logger.error(f"전류 모니터 스레드 오류 발생: {str(e)}")
+
+        return threading.Thread(
+            target=run_current_monitor,
+            name="CurrentMonitor",
             daemon=True
         )
 
@@ -160,8 +177,17 @@ class ThreadManager:
                 thread.join()
         self.nutrient_threads.clear()
 
+    def stop_current_monitor_threads(self):
+        """전류 모니터 스레드만 종료"""
+        self.stop_event.set()
+        for thread in self.current_monitor_threads:
+            if thread.is_alive():
+                thread.join()
+        self.current_monitor_threads.clear()
+
     def stop_all(self):
         """모든 스레드 종료"""
         self.stop_event.set()
         self.stop_automation_threads()
-        self.stop_nutrient_threads() 
+        self.stop_nutrient_threads()
+        self.stop_current_monitor_threads() 

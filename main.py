@@ -2,6 +2,7 @@ from typing import Optional
 from logger.custom_logger import custom_logger
 from managers.automation_manager import AutomationManager
 from managers.nutrient_manager import NutrientManager
+from managers.current_monitor_manager import CurrentMonitorManager
 from managers.thread_manager import ThreadManager
 from managers.resource_manager import ResourceManager
 from store import Store
@@ -34,6 +35,13 @@ def main() -> None:
         else:
             custom_logger.warning("센서 모니터링 초기화 실패")
 
+        # CurrentMonitorManager 초기화 및 스레드 시작
+        current_monitor_manager = CurrentMonitorManager(store)
+        current_monitor_thread = thread_manager.create_current_monitor_thread(current_monitor_manager)
+        thread_manager.current_monitor_threads.append(current_monitor_thread)
+        current_monitor_thread.start()
+        custom_logger.info("전류 모니터 스레드 시작 완료")
+
         # 자동화 실행
         automation_manager.run()
     except KeyboardInterrupt:
@@ -46,6 +54,8 @@ def main() -> None:
             automation_manager.stop()
         if 'nutrient_manager' in locals():
             nutrient_manager.stop()
+        if 'current_monitor_manager' in locals():
+            custom_logger.info("전류 모니터 종료")
         if 'resource_manager' in locals():
             resource_manager.cleanup()
 

@@ -86,6 +86,7 @@ class Settings:
         # Thread Interval Configuration
         self.automation_interval: int = self._get_positive_int("AUTOMATION_INTERVAL", 60)  # 자동화 실행 주기 (초)
         self.sensor_read_interval: int = self._get_positive_int("SENSOR_READ_INTERVAL", 300)  # 센서값 읽기 주기 (초)
+        self.current_monitor_interval: int = self._get_positive_int("CURRENT_MONITOR_INTERVAL", 10)  # 전류 모니터 주기 (초)
 
     def _get_required(self, key: str) -> str:
         """Get required environment variable."""
