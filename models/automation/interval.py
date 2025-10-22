@@ -124,47 +124,15 @@ class IntervalAutomation(BaseAutomation):
             if not self.state or not self.state.last_toggle_time:
                 return self._handle_first_run(now)
 
-            # self._log_current_state(now, current_status)
+            self._log_current_state(now, current_status)
             # 현재 상태가 올바른지 확인하고 수정
-            self._verify_and_correct_status(now, current_status)
+            # self._verify_and_correct_status(now, current_status)
             self._handle_timers(current_status)
             return self.get_machine()
 
         except Exception as e:
             self.logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
             raise
-
-    def _verify_and_correct_status(self, now: datetime, current_status: bool) -> None:
-        """현재 상태가 올바른지 확인하고 잘못되었으면 즉시 수정"""
-        if not self.state or not self.state.last_toggle_time:
-            return
-
-        elapsed_time = (now - self.state.last_toggle_time).total_seconds()
-
-        # 현재 ON 상태인 경우
-        if current_status:
-            # duration 시간이 지났으면 OFF로 변경해야 함
-            if elapsed_time >= self.duration:
-                self.logger.info(
-                    f"Device {self.name}: 수동 변경 감지 - "
-                    f"duration({self.duration}초) 초과로 OFF로 전환"
-                )
-                self.update_device_status(False)
-                self.state.update_toggle_time(now)
-                # 타이머 취소하고 재설정
-                self.state.timers.cancel_all()
-        # 현재 OFF 상태인 경우
-        else:
-            # interval 시간이 지났으면 ON으로 변경해야 함
-            if elapsed_time >= self.interval:
-                self.logger.info(
-                    f"Device {self.name}: 수동 변경 감지 - "
-                    f"interval({self.interval}초) 초과로 ON으로 전환"
-                )
-                self.update_device_status(True)
-                self.state.update_toggle_time(now)
-                # 타이머 취소하고 재설정
-                self.state.timers.cancel_all()
 
     def _handle_timers(self, current_status: bool) -> None:
         """타이머 처리"""
