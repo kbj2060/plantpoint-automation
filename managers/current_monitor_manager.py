@@ -19,13 +19,15 @@ class CurrentMonitorManager:
         """
         self.store = store
         self.last_warnings: Dict[str, bool] = {}  # Track last warning state to avoid spam
+        self.mismatch_counts: Dict[str, int] = {}  # Track consecutive mismatch counts
+        self.max_mismatch_count = 3  # 3번 연속 불일치 시 동기화
         custom_logger.info("CurrentMonitorManager 초기화 완료")
 
     def check_current_mismatch(self) -> None:
         """
         Check for mismatches between current sensor values and switch status.
 
-        Logs warnings and publishes MQTT switch messages to sync status.
+        Logs warnings and publishes MQTT switch messages to sync status after 3 consecutive mismatches.
         """
         try:
             # Redis에서 개별 current와 switch 값을 가져옴
@@ -56,22 +58,51 @@ class CurrentMonitorManager:
 
                 # current 값과 switch 상태 비교
                 if current_value != switch_value:
-                    # 새로운 불일치이거나 상태가 바뀐 경우에만 경고
-                    last_warning = self.last_warnings.get(device_name)
-                    if last_warning != current_value:
+                    # 불일치 카운트 증가
+                    if device_name not in self.mismatch_counts:
+                        self.mismatch_counts[device_name] = 1
+                    else:
+                        self.mismatch_counts[device_name] += 1
+
+                    mismatch_count = self.mismatch_counts[device_name]
+
+                    # 첫 불일치 감지 시 로그
+                    if mismatch_count == 1:
                         custom_logger.warning(
-                            f"⚠️  전류 센서와 스위치 상태 불일치 감지!\n"
+                            f"⚠️  전류 센서와 스위치 상태 불일치 감지 (1/{self.max_mismatch_count})\n"
+                            f"   기기: {device_name}\n"
+                            f"   전류 센서: {'ON (전류 감지됨)' if current_value else 'OFF (전류 없음)'}\n"
+                            f"   스위치 상태: {'ON' if switch_value else 'OFF'}"
+                        )
+                    # 2번째 불일치
+                    elif mismatch_count == 2:
+                        custom_logger.warning(
+                            f"⚠️  전류 센서와 스위치 상태 불일치 계속됨 (2/{self.max_mismatch_count})\n"
+                            f"   기기: {device_name}"
+                        )
+                    # 3번째 불일치 시 동기화
+                    elif mismatch_count >= self.max_mismatch_count:
+                        custom_logger.warning(
+                            f"🔄 전류 센서와 스위치 상태 불일치 {self.max_mismatch_count}번 연속 감지!\n"
                             f"   기기: {device_name}\n"
                             f"   전류 센서: {'ON (전류 감지됨)' if current_value else 'OFF (전류 없음)'}\n"
                             f"   스위치 상태: {'ON' if switch_value else 'OFF'}\n"
                             f"   → 스위치 상태를 전류 센서 값에 맞게 동기화합니다."
                         )
+                        # switch 상태를 current 값에 맞게 동기화
+                        self._sync_switch_status(machine, current_value)
+                        # 카운트 초기화
+                        self.mismatch_counts[device_name] = 0
                         self.last_warnings[device_name] = current_value
-
-                    # switch 상태를 current 값에 맞게 동기화
-                    self._sync_switch_status(machine, current_value)
                 else:
-                    # 상태가 일치하면 경고 추적 제거
+                    # 상태가 일치하면 카운트 초기화
+                    if device_name in self.mismatch_counts:
+                        # 불일치 카운트가 있었다면 일치 로그 출력
+                        if self.mismatch_counts[device_name] > 0:
+                            custom_logger.info(
+                                f"✓ 전류 센서와 스위치 상태 일치 확인: {device_name}"
+                            )
+                        del self.mismatch_counts[device_name]
                     if device_name in self.last_warnings:
                         del self.last_warnings[device_name]
 
