@@ -88,6 +88,16 @@ class Settings:
         self.sensor_read_interval: int = self._get_positive_int("SENSOR_READ_INTERVAL", 300)  # 센서값 읽기 주기 (초)
         self.current_monitor_interval: int = self._get_positive_int("CURRENT_MONITOR_INTERVAL", 10)  # 전류 모니터 주기 (초)
 
+        # Sensor Measurement Ranges (Safety Limits)
+        self.ph_min: float = self._get_float("PH_MIN", 5.5)
+        self.ph_max: float = self._get_float("PH_MAX", 7.5)
+        self.ec_min: float = self._get_float("EC_MIN", 0.5)
+        self.ec_max: float = self._get_float("EC_MAX", 3.0)
+        self.temp_min: float = self._get_float("TEMP_MIN", 15.0)
+        self.temp_max: float = self._get_float("TEMP_MAX", 35.0)
+        self.co2_min: float = self._get_float("CO2_MIN", 300.0)
+        self.co2_max: float = self._get_float("CO2_MAX", 2000.0)
+
     def _get_required(self, key: str) -> str:
         """Get required environment variable."""
         value = os.getenv(key)
@@ -125,6 +135,16 @@ class Settings:
         if value <= 0:
             raise ValueError(f"Environment variable {key} must be positive, got {value}")
         return value
+
+    def _get_float(self, key: str, default: float) -> float:
+        """Get float environment variable."""
+        value = os.getenv(key)
+        if value is None:
+            return default
+        try:
+            return float(value)
+        except ValueError:
+            raise ValueError(f"Environment variable {key} must be a float, got {value}")
 
 
 # Global settings instance

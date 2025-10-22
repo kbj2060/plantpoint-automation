@@ -12,6 +12,7 @@ from managers.thread_manager import ThreadManager
 from resources import mqtt
 from tabulate import tabulate
 from datetime import datetime
+from config import settings
 
 try:
     from drivers.AtlasI2C import AtlasI2C
@@ -60,15 +61,15 @@ class NutrientManager:
     # CO2_SENSOR_PORT = '/dev/ttyAMA1'  # 추가 UART (쉴드에 따라 다름)
     # CO2_SENSOR_PORT = '/dev/serial0'  # 심볼릭 링크
 
-    # Safety limits
-    PH_MIN = 5.5
-    PH_MAX = 7.5
-    EC_MIN = 0.5
-    EC_MAX = 3.0
-    TEMP_MIN = 15.0
-    TEMP_MAX = 35.0
-    CO2_MIN = 300.0  # CO2 최소값 (ppm)
-    CO2_MAX = 2000.0  # CO2 최대값 (ppm)
+    # Safety limits (loaded from environment variables)
+    PH_MIN = settings.ph_min
+    PH_MAX = settings.ph_max
+    EC_MIN = settings.ec_min
+    EC_MAX = settings.ec_max
+    TEMP_MIN = settings.temp_min
+    TEMP_MAX = settings.temp_max
+    CO2_MIN = settings.co2_min
+    CO2_MAX = settings.co2_max
     WATER_LEVEL_LOW = 1  # 아래 수위
     WATER_LEVEL_HIGH = 0  # 위 수위
 
