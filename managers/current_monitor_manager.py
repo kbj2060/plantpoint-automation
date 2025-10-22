@@ -75,7 +75,7 @@ class CurrentMonitorManager:
                         del self.last_warnings[device_name]
 
         except Exception as e:
-            custom_logger.error(f"전류 센서 모니터링 중 오류 발생: {str(e)}", exc_info=True)
+            custom_logger.error(f"전류 센서 모니터링 중 오류 발생: {str(e)}")
 
     def _sync_switch_status(self, machine, target_status: bool) -> None:
         """
@@ -113,8 +113,7 @@ class CurrentMonitorManager:
 
         except Exception as e:
             custom_logger.error(
-                f"스위치 동기화 중 오류 발생 ({machine.name}): {str(e)}",
-                exc_info=True
+                f"스위치 동기화 중 오류 발생 ({machine.name}): {str(e)}"
             )
 
     def run(self) -> None:
