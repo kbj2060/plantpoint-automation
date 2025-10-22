@@ -89,14 +89,13 @@ class CurrentMonitorManager:
         try:
             # machine.mqtt_topic은 이미 "switch/{name}" 형식
             topic = machine.mqtt_topic
-            status_value = 1 if target_status else 0
 
-            # MQTT payload 형식: {"pattern":"switch/{name}","data":{"name":"device","status":1}}
+            # MQTT payload 형식: {"pattern":"switch/{name}","data":{"name":"device","value":bool}}
             payload = {
                 "pattern": topic,
                 "data": {
                     "name": machine.name,
-                    "status": status_value
+                    "value": target_status  # boolean 값 사용
                 }
             }
 
@@ -105,8 +104,8 @@ class CurrentMonitorManager:
                     f"✓ 스위치 동기화 MQTT 발행 성공: {machine.name} → "
                     f"{'ON' if target_status else 'OFF'}"
                 )
-                # 로컬 machine 상태도 업데이트
-                machine.set_status(status_value)
+                # 로컬 machine 상태도 업데이트 (1 for ON, 0 for OFF)
+                machine.set_status(1 if target_status else 0)
             else:
                 custom_logger.error(
                     f"✗ 스위치 동기화 MQTT 발행 실패: {machine.name}"
