@@ -3,7 +3,8 @@
 from typing import Dict
 from logger.custom_logger import custom_logger
 from store import Store
-from resources import mqtt, redis
+from resources import mqtt
+from resources.redis import redis_client
 
 
 class CurrentMonitorManager:
@@ -35,9 +36,9 @@ class CurrentMonitorManager:
             for machine in self.store.machines:
                 device_name = machine.name
 
-                # Redis에서 current 값 가져오기
+                # Redis에서 current 값 가져오기 (redis_client.get()는 직접 문자열 반환)
                 current_key = f"current/{device_name}"
-                current_str = redis.client.get(current_key)
+                current_str = redis_client.get(current_key)
 
                 if current_str is None:
                     # current 센서가 없는 디바이스는 건너뜀
@@ -48,7 +49,7 @@ class CurrentMonitorManager:
 
                 # Redis에서 switch 상태 가져오기
                 switch_key = f"switch/{device_name}"
-                switch_str = redis.client.get(switch_key)
+                switch_str = redis_client.get(switch_key)
 
                 # switch 값이 없으면 기본값 False 사용
                 switch_value = switch_str.lower() == 'true' if switch_str else False
