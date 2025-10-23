@@ -125,9 +125,14 @@ class IntervalAutomation(BaseAutomation):
                 return self._handle_first_run(now)
 
             self._log_current_state(now, current_status)
+            
             # 스케줄 검증 및 강제 수정
-            # self._verify_and_enforce_schedule(now, current_status)
+            # 활성 타이머 상태(get_scheduled_time)를 기반으로 현재 상태가 스케줄과 일치하는지 확인하고
+            # 수동 변경이나 지연된 타이머를 감지하면 강제로 상태를 복원합니다.
+            self._verify_and_enforce_schedule(now, current_status)
+            
             # 타이머 처리 (상태가 변경되었을 수 있으므로 self.status 사용)
+            # _verify_and_enforce_schedule에 의해 self.status가 변경되었을 수 있습니다.
             self._handle_timers(bool(self.status))
             return self.get_machine()
 
@@ -142,7 +147,7 @@ class IntervalAutomation(BaseAutomation):
         사용자 수동 변경을 감지하여 즉시 복원합니다.
         """
         try:
-            # 예약된 ON/OFF 시간 가져오기
+            # 예약된 ON/OFF 시간 가져오기 (내부적으로 is_active() 체크)
             scheduled_on_time = self.state.timers.get_scheduled_time(is_on=True)
             scheduled_off_time = self.state.timers.get_scheduled_time(is_on=False)
 
@@ -175,7 +180,7 @@ class IntervalAutomation(BaseAutomation):
             if current_status:
                 # OFF 타이머가 예약되어 있어야 함 (정상 상태)
                 if scheduled_off_time:
-                    # 예약된 OFF 시간이 현재 시간을 지났는지 확인
+                    # 예약된 OFF 시간이 현재 시간을 지났는지 확인 (타이머가 지연되었거나 놓친 경우)
                     if now >= scheduled_off_time:
                         # OFF 시간이 지났으므로 OFF로 전환
                         self.logger.warning(
@@ -194,7 +199,7 @@ class IntervalAutomation(BaseAutomation):
                     # last_toggle이 OFF였다면, last_toggle + interval까지가 OFF 시간
                     # last_toggle이 ON이었다면, last_toggle + duration까지가 ON 시간
 
-                    # scheduled_on_time이 있다는 것은 현재 OFF 상태여야 한다�� 의미
+                    # scheduled_on_time이 있다는 것은 현재 OFF 상태여야 한다는 의미
                     if scheduled_on_time:
                         # 현재는 OFF 시간 범위 (interval 기간 중)
                         # 사용자가 수동으로 ON으로 변경했으므로 OFF로 복원
@@ -217,7 +222,7 @@ class IntervalAutomation(BaseAutomation):
             else:
                 # ON 타이머가 예약되어 있어야 함 (정상 상태)
                 if scheduled_on_time:
-                    # 예약된 ON 시간이 현재 시간을 지났는지 확인
+                    # 예약된 ON 시간이 현재 시간을 지났는지 확인 (타이머가 지연되었거나 놓친 경우)
                     if now >= scheduled_on_time:
                         # ON 시간이 지났으므로 ON으로 전환
                         self.logger.warning(
@@ -385,4 +390,4 @@ class IntervalAutomation(BaseAutomation):
     def __del__(self):
         """객체 소멸 시 정리"""
         if hasattr(self, 'state') and self.state:
-            self.state.timers.cancel_all() 
+            self.state.timers.cancel_all()
