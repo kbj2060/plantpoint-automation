@@ -148,6 +148,15 @@ class IntervalAutomation(BaseAutomation):
             # 마지막 토글 시간
             last_toggle = self.state.last_toggle_time
 
+            # 디버그 로그 추가
+            self.logger.debug(
+                f"Device {self.name}: 스케줄 검증 시작 - "
+                f"현재상태={'ON' if current_status else 'OFF'}, "
+                f"scheduled_on={scheduled_on_time.strftime('%H:%M:%S') if scheduled_on_time else 'None'}, "
+                f"scheduled_off={scheduled_off_time.strftime('%H:%M:%S') if scheduled_off_time else 'None'}, "
+                f"last_toggle={last_toggle.strftime('%H:%M:%S') if last_toggle else 'None'}"
+            )
+
             if not last_toggle:
                 return
 
