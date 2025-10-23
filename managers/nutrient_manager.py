@@ -35,7 +35,9 @@ except ImportError:
     custom_logger.warning("mh_z19 module not available. CO2 readings will be simulated.")
     CO2_AVAILABLE = False
 
-
+CO2_AVAILABLE = False
+DHT_AVAILABLE = False
+ATLAS_AVAILABLE = False
 class NutrientManager:
     """
     Nutrient management system for monitoring pH, EC, and water temperature.

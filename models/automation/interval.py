@@ -135,7 +135,11 @@ class IntervalAutomation(BaseAutomation):
             raise
 
     def _verify_and_correct_status(self, now: datetime, current_status: bool) -> None:
-        """scheduler_on과 scheduler_off를 기반으로 현재 상태 검증 및 수정"""
+        """scheduler_on과 scheduler_off를 기반으로 현재 상태 검증 및 강제 수정
+
+        스케줄에 맞게 상태를 강제로 유지합니다.
+        사용자가 수동으로 변경해도 스케줄 시간 범위에 따라 즉시 복원합니다.
+        """
         try:
             # 예약된 ON/OFF 시간 가져오기
             scheduled_on_time = self.state.timers.get_scheduled_time(is_on=True)
@@ -147,37 +151,99 @@ class IntervalAutomation(BaseAutomation):
             if not last_toggle:
                 return
 
-            # ON 상태일 때 검증
+            # 스케줄 기반으로 현재 어떤 상태여야 하는지 계산
+            # last_toggle 이후 경과 시간 계산
+            elapsed_since_toggle = (now - last_toggle).total_seconds()
+
+            # 현재 상태가 ON일 때
             if current_status:
-                # OFF 타이머가 예약되어 있어야 함
+                # OFF 타이머가 예약되어 있어야 함 (정상 상태)
                 if scheduled_off_time:
                     # 예약된 OFF 시간이 현재 시간을 지났는지 확인
                     if now >= scheduled_off_time:
+                        # OFF 시간이 지났으므로 OFF로 전환
                         self.logger.warning(
-                            f"Device {self.name}: ON 상태 유지 시간 초과 감지. "
+                            f"Device {self.name}: 스케줄 검증 - OFF 시간 초과 감지. "
                             f"예약된 OFF 시간: {scheduled_off_time.strftime('%H:%M:%S')}, "
-                            f"현재 시간: {now.strftime('%H:%M:%S')}. OFF로 전환합니다."
+                            f"현재 시간: {now.strftime('%H:%M:%S')}. "
+                            f"스케줄에 맞게 OFF로 전환합니다."
                         )
                         self.update_device_status(False)
                         self.state.update_toggle_time(now)
                         self.state.timers.cancel_all()
                         self._schedule_on_timer()
+                else:
+                    # OFF 타이머가 없는데 ON 상태라면 비정상
+                    # ON 타이머가 있다면 사용자가 수동으로 변경한 것
+                    if scheduled_on_time:
+                        # 스케줄상 ON 시간 범위 계산
+                        expected_off_time = scheduled_on_time + timedelta(seconds=self.duration)
 
-            # OFF 상태일 때 검증
+                        if now < expected_off_time:
+                            # 아직 ON 시간 범위 내이므로 ON 유지하고 타이머 재설정
+                            self.logger.warning(
+                                f"Device {self.name}: 수동 변경 감지. "
+                                f"스케줄상 ON 시간 범위 내 (OFF 예정: {expected_off_time.strftime('%H:%M:%S')}). "
+                                f"ON 상태 유지하고 타이머 재설정합니다."
+                            )
+                            self.state.update_toggle_time(scheduled_on_time)
+                            self.state.timers.cancel_all()
+                            self._schedule_off_timer()
+                        else:
+                            # ON 시간 범위를 벗어났으므로 OFF로 전환
+                            self.logger.warning(
+                                f"Device {self.name}: 수동 변경 감지했으나 스케줄상 OFF 시간. "
+                                f"스케줄에 맞게 OFF로 전환합니다."
+                            )
+                            self.update_device_status(False)
+                            self.state.update_toggle_time(now)
+                            self.state.timers.cancel_all()
+                            self._schedule_on_timer()
+
+            # 현재 상태가 OFF일 때
             else:
-                # ON 타이머가 예약되어 있어야 함
+                # ON 타이머가 예약되어 있어야 함 (정상 상태)
                 if scheduled_on_time:
                     # 예약된 ON 시간이 현재 시간을 지났는지 확인
                     if now >= scheduled_on_time:
+                        # ON 시간이 지났으므로 ON으로 전환
                         self.logger.warning(
-                            f"Device {self.name}: OFF 상태 유지 시간 초과 감지. "
+                            f"Device {self.name}: 스케줄 검증 - ON 시간 초과 감지. "
                             f"예약된 ON 시간: {scheduled_on_time.strftime('%H:%M:%S')}, "
-                            f"현재 시간: {now.strftime('%H:%M:%S')}. ON으로 전환합니다."
+                            f"현재 시간: {now.strftime('%H:%M:%S')}. "
+                            f"스케줄에 맞게 ON으로 전환합니다."
                         )
                         self.update_device_status(True)
                         self.state.update_toggle_time(now)
                         self.state.timers.cancel_all()
                         self._schedule_off_timer()
+                else:
+                    # ON 타이머가 없는데 OFF 상태라면 비정상
+                    # OFF 타이머가 있다면 사용자가 수동으로 변경한 것
+                    if scheduled_off_time:
+                        # 스케줄상 OFF 시간 범위 계산
+                        expected_on_time = scheduled_off_time + timedelta(seconds=self.interval)
+
+                        if now < expected_on_time:
+                            # 아직 OFF 시간 범위 내이므로 OFF 유지하고 타이머 재설정
+                            self.logger.warning(
+                                f"Device {self.name}: 수동 변경 감지. "
+                                f"스케줄상 OFF 시간 범위 내 (ON 예정: {expected_on_time.strftime('%H:%M:%S')}). "
+                                f"OFF 상태 유지하고 타이머 재설정합니다."
+                            )
+                            self.state.update_toggle_time(scheduled_off_time)
+                            self.state.timers.cancel_all()
+                            self._schedule_on_timer()
+                        else:
+                            # OFF 시간 범위를 벗어났으므로 ON으로 전환
+                            self.logger.warning(
+                                f"Device {self.name}: 수동 변경 감지했으나 스케줄상 ON 시간. "
+                                f"스케줄에 맞게 ON으로 전환합니다."
+                            )
+                            self.update_device_status(True)
+                            self.state.update_toggle_time(now)
+                            self.state.timers.cancel_all()
+                            self._schedule_off_timer()
 
         except Exception as e:
             self.logger.error(f"상태 검증 중 오류 발생: {str(e)}")

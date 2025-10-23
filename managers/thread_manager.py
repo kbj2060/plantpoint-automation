@@ -87,7 +87,10 @@ class ThreadManager:
 
     def _print_status_report(self):
         """자동화 상태 리포트 출력"""
+        custom_logger.debug(f"_print_status_report 호출됨. automation_instances 개수: {len(self.automation_instances)}")
+
         if not self.automation_instances:
+            custom_logger.warning("automation_instances가 비어있어 상태 리포트를 출력하지 않습니다.")
             return
 
         current_time = datetime.now().strftime("%H:%M:%S")
