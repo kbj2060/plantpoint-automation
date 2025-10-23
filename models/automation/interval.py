@@ -124,21 +124,22 @@ class IntervalAutomation(BaseAutomation):
             if not self.state or not self.state.last_toggle_time:
                 return self._handle_first_run(now)
 
-            # self._log_current_state(now, current_status)
-            # 현재 상태가 올바른지 확인하고 수정
-            self._verify_and_correct_status(now, current_status)
-            self._handle_timers(current_status)
+            self._log_current_state(now, current_status)
+            # 스케줄 검증 및 강제 수정
+            # self._verify_and_enforce_schedule(now, current_status)
+            # 타이머 처리 (상태가 변경되었을 수 있으므로 self.status 사용)
+            self._handle_timers(bool(self.status))
             return self.get_machine()
 
         except Exception as e:
             self.logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
             raise
 
-    def _verify_and_correct_status(self, now: datetime, current_status: bool) -> None:
-        """scheduler_on과 scheduler_off를 기반으로 현재 상태 검증 및 강제 수정
+    def _verify_and_enforce_schedule(self, now: datetime, current_status: bool) -> None:
+        """스케줄 기반 상태 검증 및 강제 수정
 
-        스케줄에 맞게 상태를 강제로 유지합니다.
-        사용자가 수동으로 변경해도 스케줄에 따라 즉시 복원합니다.
+        타이머 기반으로 현재 어떤 상태여야 하는지 판단하고,
+        사용자 수동 변경을 감지하여 즉시 복원합니다.
         """
         try:
             # 예약된 ON/OFF 시간 가져오기
