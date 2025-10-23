@@ -124,15 +124,63 @@ class IntervalAutomation(BaseAutomation):
             if not self.state or not self.state.last_toggle_time:
                 return self._handle_first_run(now)
 
-            self._log_current_state(now, current_status)
+            # self._log_current_state(now, current_status)
             # 현재 상태가 올바른지 확인하고 수정
-            # self._verify_and_correct_status(now, current_status)
+            self._verify_and_correct_status(now, current_status)
             self._handle_timers(current_status)
             return self.get_machine()
 
         except Exception as e:
             self.logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
             raise
+
+    def _verify_and_correct_status(self, now: datetime, current_status: bool) -> None:
+        """scheduler_on과 scheduler_off를 기반으로 현재 상태 검증 및 수정"""
+        try:
+            # 예약된 ON/OFF 시간 가져오기
+            scheduled_on_time = self.state.timers.get_scheduled_time(is_on=True)
+            scheduled_off_time = self.state.timers.get_scheduled_time(is_on=False)
+
+            # 마지막 토글 시간
+            last_toggle = self.state.last_toggle_time
+
+            if not last_toggle:
+                return
+
+            # ON 상태일 때 검증
+            if current_status:
+                # OFF 타이머가 예약되어 있어야 함
+                if scheduled_off_time:
+                    # 예약된 OFF 시간이 현재 시간을 지났는지 확인
+                    if now >= scheduled_off_time:
+                        self.logger.warning(
+                            f"Device {self.name}: ON 상태 유지 시간 초과 감지. "
+                            f"예약된 OFF 시간: {scheduled_off_time.strftime('%H:%M:%S')}, "
+                            f"현재 시간: {now.strftime('%H:%M:%S')}. OFF로 전환합니다."
+                        )
+                        self.update_device_status(False)
+                        self.state.update_toggle_time(now)
+                        self.state.timers.cancel_all()
+                        self._schedule_on_timer()
+
+            # OFF 상태일 때 검증
+            else:
+                # ON 타이머가 예약되어 있어야 함
+                if scheduled_on_time:
+                    # 예약된 ON 시간이 현재 시간을 지났는지 확인
+                    if now >= scheduled_on_time:
+                        self.logger.warning(
+                            f"Device {self.name}: OFF 상태 유지 시간 초과 감지. "
+                            f"예약된 ON 시간: {scheduled_on_time.strftime('%H:%M:%S')}, "
+                            f"현재 시간: {now.strftime('%H:%M:%S')}. ON으로 전환합니다."
+                        )
+                        self.update_device_status(True)
+                        self.state.update_toggle_time(now)
+                        self.state.timers.cancel_all()
+                        self._schedule_off_timer()
+
+        except Exception as e:
+            self.logger.error(f"상태 검증 중 오류 발생: {str(e)}")
 
     def _handle_timers(self, current_status: bool) -> None:
         """타이머 처리"""
