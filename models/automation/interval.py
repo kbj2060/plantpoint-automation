@@ -213,26 +213,21 @@ class IntervalAutomation(BaseAutomation):
                         self.state.timers.cancel_all()
                         self._schedule_off_timer()
                 else:
-                    # ON 타이머가 없는데 OFF 상태라면 비정상
-                    # OFF 타이머가 있다면 사용자가 수동으로 변경한 것
+                    # ON 타이머가 없는데 OFF 상태라면 비정상 (사용자가 수동으로 변경)
+                    # OFF 타이머가 있다면 원래 ON이어야 하는 시간에 수동으로 OFF로 변경한 것
                     if scheduled_off_time:
                         # 스케줄상 OFF 시간 범위 계산
                         expected_on_time = scheduled_off_time + timedelta(seconds=self.interval)
 
                         if now < expected_on_time:
-                            # 아직 OFF 시간 범위 내이므로 OFF 유지하고 타이머 재설정
-                            self.logger.warning(
-                                f"Device {self.name}: 수동 변경 감지. "
-                                f"스케줄상 OFF 시간 범위 내 (ON 예정: {expected_on_time.strftime('%H:%M:%S')}). "
-                                f"OFF 상태 유지하고 타이머 재설정합니다."
-                            )
-                            self.state.update_toggle_time(scheduled_off_time)
-                            self.state.timers.cancel_all()
-                            self._schedule_on_timer()
+                            # 스케줄상 OFF 시간 범위 내이지만, 스케줄을 강제 적용하기 위해
+                            # 원래 스케줄대로 ON 시간에 맞춰 ON으로 전환되도록 유지
+                            # 타이머 재설정 없이 그냥 유지 (다음 scheduled_on_time에 ON)
+                            pass
                         else:
-                            # OFF 시간 범위를 벗어났으므로 ON으로 전환
+                            # OFF 시간 범위를 벗어났으므로 즉시 ON으로 전환
                             self.logger.warning(
-                                f"Device {self.name}: 수동 변경 감지했으나 스케줄상 ON 시간. "
+                                f"Device {self.name}: 수동 OFF 감지. 스케줄상 ON 시간. "
                                 f"스케줄에 맞게 ON으로 전환합니다."
                             )
                             self.update_device_status(True)
