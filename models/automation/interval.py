@@ -138,7 +138,7 @@ class IntervalAutomation(BaseAutomation):
         """scheduler_on과 scheduler_off를 기반으로 현재 상태 검증 및 강제 수정
 
         스케줄에 맞게 상태를 강제로 유지합니다.
-        사용자가 수동으로 변경해도 스케줄 시간 범위에 따라 즉시 복원합니다.
+        사용자가 수동으로 변경해도 스케줄에 따라 즉시 복원합니다.
         """
         try:
             # 예약된 ON/OFF 시간 가져오기
@@ -151,9 +151,15 @@ class IntervalAutomation(BaseAutomation):
             if not last_toggle:
                 return
 
-            # 스케줄 기반으로 현재 어떤 상태여야 하는지 계산
             # last_toggle 이후 경과 시간 계산
             elapsed_since_toggle = (now - last_toggle).total_seconds()
+
+            # 스케줄 기반으로 현재 상태가 ON이어야 하는지 OFF여야 하는지 계산
+            # interval 주기: OFF(last_toggle) -> [interval초 후] -> ON -> [duration초 후] -> OFF -> ...
+            # 또는: ON(last_toggle) -> [duration초 후] -> OFF -> [interval초 후] -> ON -> ...
+
+            # last_toggle 시점의 상태를 기준으로 현재 어떤 상태여야 하는지 판단
+            # scheduled_on_time과 scheduled_off_time을 통해 현재 어떤 타이머가 활성화되어 있는지 확인
 
             # 현재 상태가 ON일 때
             if current_status:
@@ -173,27 +179,29 @@ class IntervalAutomation(BaseAutomation):
                         self.state.timers.cancel_all()
                         self._schedule_on_timer()
                 else:
-                    # OFF 타이머가 없는데 ON 상태라면 비정상 (사용자가 수동으로 변경)
-                    # ON 타이머가 있다면 원래 OFF여야 하는 시간에 수동으로 ON으로 변경한 것
-                    if scheduled_on_time:
-                        # 스케줄상 ON 시간 범위 계산
-                        expected_off_time = scheduled_on_time + timedelta(seconds=self.duration)
+                    # OFF 타이머가 없는데 ON 상태 = 사용자가 수동으로 변경
+                    # last_toggle 기준으로 현재 ON 시간인지 OFF 시간인지 판단
+                    # last_toggle이 OFF였다면, last_toggle + interval까지가 OFF 시간
+                    # last_toggle이 ON이었다면, last_toggle + duration까지가 ON 시간
 
-                        if now < expected_off_time:
-                            # 스케줄상 ON 시간 범위 내이지만, 스케줄을 강제 적용하기 위해
-                            # 원래 스케줄대로 OFF 시간에 맞춰 OFF로 전환되도록 유지
-                            # 타이머 재설정 없이 그냥 유지 (다음 scheduled_off_time에 OFF)
-                            pass
-                        else:
-                            # ON 시간 범위를 벗어났으므로 즉시 OFF로 전환
-                            self.logger.warning(
-                                f"Device {self.name}: 수동 ON 감지. 스케줄상 OFF 시간. "
-                                f"스케줄에 맞게 OFF로 전환합니다."
-                            )
-                            self.update_device_status(False)
-                            self.state.update_toggle_time(now)
-                            self.state.timers.cancel_all()
-                            self._schedule_on_timer()
+                    # scheduled_on_time이 있다는 것은 현재 OFF 상태여야 한다�� 의미
+                    if scheduled_on_time:
+                        # 현재는 OFF 시간 범위 (interval 기간 중)
+                        # 사용자가 수동으로 ON으로 변경했으므로 OFF로 복원
+                        self.logger.warning(
+                            f"Device {self.name}: 수동 ON 감지. 스케줄상 OFF 시간 (다음 ON 예정: {scheduled_on_time.strftime('%H:%M:%S')}). "
+                            f"스케줄에 맞게 즉시 OFF로 전환합니다."
+                        )
+                        self.update_device_status(False)
+                        # last_toggle_time은 유지 (원래 스케줄 유지)
+                        # 타이머는 이미 있으므로 그대로 유지
+                    else:
+                        # 타이머가 없는 상태 - 비정상, OFF 타이머 재설정
+                        self.logger.warning(
+                            f"Device {self.name}: 타이머 없음 감지. OFF 타이머 재설정."
+                        )
+                        self.state.timers.cancel_all()
+                        self._schedule_off_timer()
 
             # 현재 상태가 OFF일 때
             else:
@@ -213,27 +221,25 @@ class IntervalAutomation(BaseAutomation):
                         self.state.timers.cancel_all()
                         self._schedule_off_timer()
                 else:
-                    # ON 타이머가 없는데 OFF 상태라면 비정상 (사용자가 수동으로 변경)
-                    # OFF 타이머가 있다면 원래 ON이어야 하는 시간에 수동으로 OFF로 변경한 것
+                    # ON 타이머가 없는데 OFF 상태 = 사용자가 수동으로 변경
+                    # scheduled_off_time이 있다는 것은 현재 ON 상태여야 한다는 의미
                     if scheduled_off_time:
-                        # 스케줄상 OFF 시간 범위 계산
-                        expected_on_time = scheduled_off_time + timedelta(seconds=self.interval)
-
-                        if now < expected_on_time:
-                            # 스케줄상 OFF 시간 범위 내이지만, 스케줄을 강제 적용하기 위해
-                            # 원래 스케줄대로 ON 시간에 맞춰 ON으로 전환되도록 유지
-                            # 타이머 재설정 없이 그냥 유지 (다음 scheduled_on_time에 ON)
-                            pass
-                        else:
-                            # OFF 시간 범위를 벗어났으므로 즉시 ON으로 전환
-                            self.logger.warning(
-                                f"Device {self.name}: 수동 OFF 감지. 스케줄상 ON 시간. "
-                                f"스케줄에 맞게 ON으로 전환합니다."
-                            )
-                            self.update_device_status(True)
-                            self.state.update_toggle_time(now)
-                            self.state.timers.cancel_all()
-                            self._schedule_off_timer()
+                        # 현재는 ON 시간 범위 (duration 기간 중)
+                        # 사용자가 수동으로 OFF로 변경했으므로 ON으로 복원
+                        self.logger.warning(
+                            f"Device {self.name}: 수동 OFF 감지. 스케줄상 ON 시간 (다음 OFF 예정: {scheduled_off_time.strftime('%H:%M:%S')}). "
+                            f"스케줄에 맞게 즉시 ON으로 전환합니다."
+                        )
+                        self.update_device_status(True)
+                        # last_toggle_time은 유지 (원래 스케줄 유지)
+                        # 타이머는 이미 있으므로 그대로 유지
+                    else:
+                        # 타이머가 없는 상태 - 비정상, ON 타이머 재설정
+                        self.logger.warning(
+                            f"Device {self.name}: 타이머 없음 감지. ON 타이머 재설정."
+                        )
+                        self.state.timers.cancel_all()
+                        self._schedule_on_timer()
 
         except Exception as e:
             self.logger.error(f"상태 검증 중 오류 발생: {str(e)}")
