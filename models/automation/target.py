@@ -2,7 +2,7 @@ from typing import Optional
 from models.automation.base import BaseAutomation
 from models.Machine import BaseMachine
 from models.automation.models import MQTTMessage, MQTTPayloadData, MessageHandler, SwitchMessage, TopicType
-from datetime import datetime
+from utils.led_time_utils import load_led_time_range, is_led_on, calculate_effective_target
 class TargetAutomation(BaseAutomation):
     def __init__(self, device_id: str, category: str, active: bool, target: float, margin: float,
                  increase_device_id: Optional[int] = None, decrease_device_id: Optional[int] = None,
@@ -65,81 +65,9 @@ class TargetAutomation(BaseAutomation):
                 None
             )
 
-        # LED의 range automation 설정 찾기
-        led_device = next((m for m in store.machines if m.name == 'led'), None)
-        if led_device:
-            # Store에서 LED의 automation 설정 찾기
-            led_automation = next(
-                (auto for auto in store.automations if auto.get('device_id', {}).get('name') == 'led'),
-                None
-            )
+        # LED의 range automation 설정 로드
+        self.led_time_range = load_led_time_range(store, self.name)
 
-            if led_automation:
-                self.led_time_range = {
-                    'start_time': led_automation.get('start_time'),
-                    'end_time': led_automation.get('end_time'),
-                    'active': led_automation.get('active', False)
-                }
-            else:
-                self.led_time_range = None
-                self.logger.warning(f"Device {self.name}: LED automation 설정을 찾을 수 없습니다.")
-        else:
-            self.led_time_range = None
-            self.logger.warning(f"Device {self.name}: LED 장치를 찾을 수 없습니다.")
-
-    def _is_led_on(self) -> bool:
-        """현재 시간이 LED 시간 범위 내에 있는지 판단
-
-        Returns:
-            bool: LED가 ON 상태여야 하면 True, 아니면 False
-        """
-        # LED 시간 범위 설정이 없거나 비활성화된 경우
-        if not self.led_time_range or not self.led_time_range.get('active'):
-            return False
-
-        try:
-            now = datetime.now()
-            current_time = now.strftime('%H:%M')
-
-            start_time = self.led_time_range.get('start_time')
-            end_time = self.led_time_range.get('end_time')
-
-            if not start_time or not end_time:
-                return False
-
-            # 시간 비교
-            # 예: start_time='06:00', end_time='18:00', current_time='12:30'
-            # 정상적인 경우: start <= current < end
-            if start_time <= end_time:
-                # 같은 날 범위 (예: 06:00 ~ 18:00)
-                return start_time <= current_time < end_time
-            else:
-                # 자정을 넘는 범위 (예: 22:00 ~ 06:00)
-                return current_time >= start_time or current_time < end_time
-
-        except Exception as e:
-            self.logger.error(f"LED 시간 범위 판단 실패: {str(e)}")
-            return False
-
-    def _calculate_effective_target(self) -> float:
-        """LED 시간 범위에 따라 유효 목표값 계산
-
-        Returns:
-            float: 계산된 유효 목표값
-                - LED 시간 범위 내 (ON): 데이터베이스의 target 값 사용
-                - LED 시간 범위 외 (OFF): target - 5
-                - LED 설정 없음: target 사용 (안전 모드)
-        """
-        if not self.led_time_range:
-            # LED 시간 범위 설정이 없는 경우 기본 target 사용
-            return self.target
-
-        if self._is_led_on():
-            # LED 시간 범위 내 (ON): 데이터베이스의 target 값 사용
-            return self.target
-        else:
-            # LED 시간 범위 외 (OFF): target - 5
-            return self.target - 5
 
     def control(self) -> Optional[BaseMachine]:
         """목표값 기반 제어 실행 (cooler/heater 구분)"""
@@ -157,7 +85,7 @@ class TargetAutomation(BaseAutomation):
 
         try:
             # LED 상태에 따라 동적으로 target 계산
-            effective_target = self._calculate_effective_target()
+            effective_target = calculate_effective_target(self.target, self.led_time_range)
 
             lower_bound = effective_target - self.margin
             upper_bound = effective_target + self.margin
@@ -167,10 +95,10 @@ class TargetAutomation(BaseAutomation):
                 # increase 장치 켜기 (heater)
                 if self.increase_device:
                     self._turn_on_device(self.increase_device)
-                    led_on = self._is_led_on()
+                    led_status = is_led_on(self.led_time_range)
                     self.logger.info(
                         f"Sensor {self.name}: {self.increase_device.name} ON "
-                        f"(현재값: {self.value}, 유효목표: {effective_target}, LED: {'ON' if led_on else 'OFF'})"
+                        f"(현재값: {self.value}, 유효목표: {effective_target}, LED: {'ON' if led_status else 'OFF'})"
                     )
 
                 # decrease 장치 끄기 (cooler)
@@ -184,10 +112,10 @@ class TargetAutomation(BaseAutomation):
                 # decrease 장치 켜기 (cooler)
                 if self.decrease_device:
                     self._turn_on_device(self.decrease_device)
-                    led_on = self._is_led_on()
+                    led_status = is_led_on(self.led_time_range)
                     self.logger.info(
                         f"Sensor {self.name}: {self.decrease_device.name} ON "
-                        f"(현재값: {self.value}, 유효목표: {effective_target}, LED: {'ON' if led_on else 'OFF'})"
+                        f"(현재값: {self.value}, 유효목표: {effective_target}, LED: {'ON' if led_status else 'OFF'})"
                     )
 
                 # increase 장치 끄기 (heater)
@@ -198,13 +126,13 @@ class TargetAutomation(BaseAutomation):
 
             else:
                 # 적정 범위 내
-                led_on = self._is_led_on()
+                led_status = is_led_on(self.led_time_range)
                 if self.in_range_count < self.required_count:
                     self.in_range_count += 1
                     self.logger.info(
                         f"Sensor {self.name}: 목표값 범위 내 "
                         f"(연속 카운트: {self.in_range_count}/{self.required_count}, "
-                        f"현재값: {self.value}, 유효목표: {effective_target}, LED: {'ON' if led_on else 'OFF'})"
+                        f"현재값: {self.value}, 유효목표: {effective_target}, LED: {'ON' if led_status else 'OFF'})"
                     )
 
                 # 연속 카운트 도달 -> 모든 장치 끄기
@@ -216,7 +144,7 @@ class TargetAutomation(BaseAutomation):
 
                     self.logger.info(
                         f"Sensor {self.name}: 목표값 {self.required_count}회 연속 도달로 모든 장치 OFF "
-                        f"(현재값: {self.value}, 유효목표: {effective_target}, LED: {'ON' if led_on else 'OFF'})"
+                        f"(현재값: {self.value}, 유효목표: {effective_target}, LED: {'ON' if led_status else 'OFF'})"
                     )
                     self.in_range_count = 0
 

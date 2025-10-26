@@ -6,6 +6,7 @@ from models.Machine import BaseMachine
 from models.automation.models import MessageHandler, TimeConfig, MQTTMessage, TopicType, MQTTPayloadData, SwitchMessage
 from resources import redis
 from constants import TREAD_DURATION_LIMIT
+from utils.led_time_utils import load_led_time_range, is_led_on
 
 class TimerManager:
     """타이머 관리 클래스"""
@@ -84,6 +85,7 @@ class IntervalAutomation(BaseAutomation):
         super().__init__(device_id, category, active, updated_at, self.settings)
 
         self.state = IntervalState()  # 상태 초기화
+        self.led_time_range = None  # LED 시간 범위 설정
 
     def _init_from_settings(self, settings: dict) -> None:
         """Interval 자동화 설정 초기화"""
@@ -94,14 +96,46 @@ class IntervalAutomation(BaseAutomation):
             self.duration = TimeConfig(
                 duration_settings
             ).to_seconds()
-            
-            self.interval = TimeConfig(
+
+            # 기본 interval 값 저장 (LED OFF 시 2배로 사용)
+            self.base_interval = TimeConfig(
                 interval_settings
             ).to_seconds()
-            
+
+            self.interval = self.base_interval
+
         except Exception as e:
             self.logger.error(f"설정 초기화 실패: {str(e)}")
             raise ValueError(f"설정 초기화 실패: {str(e)}")
+
+    def _load_control_devices(self, store) -> None:
+        """Store에서 LED 시간 범위 설정 로드 (waterspray 전용)"""
+        if self.name == 'waterspray':
+            self.led_time_range = load_led_time_range(store, self.name)
+
+    def _calculate_effective_interval(self) -> float:
+        """LED 상태에 따라 유효 interval 계산 (waterspray 전용)
+
+        Returns:
+            float: 계산된 유효 interval
+                - waterspray가 아닌 경우: base_interval 사용
+                - LED ON: base_interval 사용
+                - LED OFF: base_interval * 2 사용
+        """
+        # waterspray가 아니면 기본 interval 사용
+        if self.name != 'waterspray':
+            return self.base_interval
+
+        # LED 시간 범위 설정이 없으면 기본 interval 사용
+        if not self.led_time_range:
+            return self.base_interval
+
+        if is_led_on(self.led_time_range):
+            # LED ON: 기본 interval
+            return self.base_interval
+        else:
+            # LED OFF: interval 2배
+            return self.base_interval * 2
 
     def update_settings(self, settings: dict) -> None:
         """설정 업데이트 및 타이머 재시작"""
@@ -296,13 +330,23 @@ class IntervalAutomation(BaseAutomation):
 
                 self.update_device_status(True)
                 self.state.update_toggle_time(datetime.now())
-                self.logger.info(f"Device {self.name}: interval({self.interval}초) 경과로 ON")
+
+                # 로깅 시 실제 사용된 interval 표시
+                effective_interval = self._calculate_effective_interval()
+                led_status = is_led_on(self.led_time_range) if self.led_time_range else None
+                log_msg = f"Device {self.name}: interval({effective_interval}초) 경과로 ON"
+                if self.name == 'waterspray' and led_status is not None:
+                    log_msg += f" (LED: {'ON' if led_status else 'OFF'})"
+                self.logger.info(log_msg)
+
                 self._schedule_off_timer()
             except Exception as e:
                 self.logger.error(f"ON Timer callback 오류: {str(e)}")
 
-        self.state.timers.schedule(self.interval, on_callback, is_on=True)
-        self._log_timer_scheduled("ON", self.interval)
+        # LED 상태에 따라 동적으로 계산된 interval 사용
+        effective_interval = self._calculate_effective_interval()
+        self.state.timers.schedule(effective_interval, on_callback, is_on=True)
+        self._log_timer_scheduled("ON", effective_interval)
 
     def _log_current_state(self, now: datetime, current_status: bool) -> None:
         """현재 상태 로깅"""
