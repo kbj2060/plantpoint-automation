@@ -21,22 +21,6 @@ except ImportError:
     custom_logger.warning("AtlasI2C module not available. Sensor readings will be simulated.")
     ATLAS_AVAILABLE = False
 
-try:
-    import Adafruit_DHT
-    DHT_AVAILABLE = True
-except ImportError:
-    custom_logger.warning("Adafruit_DHT module not available. DHT22 readings will be simulated.")
-    DHT_AVAILABLE = False
-
-try:
-    import mh_z19
-    CO2_AVAILABLE = True
-except ImportError:
-    custom_logger.warning("mh_z19 module not available. CO2 readings will be simulated.")
-    CO2_AVAILABLE = False
-
-CO2_AVAILABLE = False
-DHT_AVAILABLE = False
 ATLAS_AVAILABLE = False
 class NutrientManager:
     """
@@ -46,22 +30,8 @@ class NutrientManager:
     SENSOR_NAME_MAPPING = {
         "RTD": "water_temperature",
         "PH": "ph",
-        "EC": "ec",
-        "co2": "co2",
-        "temperature": "temperature"
+        "EC": "ec"
     }
-
-    # DHT22 센서 설정
-    DHT_SENSOR = Adafruit_DHT.DHT22
-    DHT_PIN = 26  # GPIO 핀 번호 (필요에 따라 변경)
-    
-    # MH-Z19E CO2 센서 설정
-    # i3 Interlink 쉴드 사용 시 UART 포트 확인 필요
-    CO2_SENSOR_PORT = None  # 자동 감지 시도
-    # i3 Interlink 쉴드 사용 시 다음 중 하나로 설정:
-    # CO2_SENSOR_PORT = '/dev/ttyAMA0'  # 기본 UART
-    # CO2_SENSOR_PORT = '/dev/ttyAMA1'  # 추가 UART (쉴드에 따라 다름)
-    # CO2_SENSOR_PORT = '/dev/serial0'  # 심볼릭 링크
 
     # Safety limits (loaded from environment variables)
     PH_MIN = settings.ph_min
@@ -70,8 +40,6 @@ class NutrientManager:
     EC_MAX = settings.ec_max
     TEMP_MIN = settings.temp_min
     TEMP_MAX = settings.temp_max
-    CO2_MIN = settings.co2_min
-    CO2_MAX = settings.co2_max
     WATER_LEVEL_LOW = 1  # 아래 수위
     WATER_LEVEL_HIGH = 0  # 위 수위
 
@@ -100,18 +68,6 @@ class NutrientManager:
                     custom_logger.info("No Atlas sensors found")
             else:
                 custom_logger.info("Atlas I2C not available - skipping Atlas sensor detection")
-
-            # DHT22 센서 확인
-            if DHT_AVAILABLE:
-                custom_logger.info("DHT22 sensor available for temperature/humidity monitoring")
-            else:
-                custom_logger.info("DHT22 sensor not available - will use simulated values")
-
-            # CO2 센서 확인
-            if CO2_AVAILABLE:
-                custom_logger.info("CO2 sensor available")
-            else:
-                custom_logger.info("CO2 sensor not available - will use simulated values")
 
             custom_logger.info("Sensor monitoring initialized successfully")
             return True
@@ -192,120 +148,12 @@ class NutrientManager:
         except Exception as e:
             custom_logger.error(f"Error reading water level sensor: {e}")
 
-        # Read DHT22 sensor (temperature and humidity)
-        try:
-            dht_results = self._read_dht22_sensor()
-            results.update(dht_results)
-        except Exception as e:
-            custom_logger.error(f"Error reading DHT22 sensor: {e}")
-
-        # Read MH-Z19E CO2 sensor
-        try:
-            co2_result = self._read_co2_sensor()
-            results.update(co2_result)
-        except Exception as e:
-            custom_logger.error(f"Error reading CO2 sensor: {e}")
-
         self.last_readings = results
         return results
 
     def _get_sensor_name(self, moduletype: str) -> str:
         """Map module type to sensor name."""
         return self.SENSOR_NAME_MAPPING.get(moduletype.upper(), moduletype.lower())
-
-    def _read_dht22_sensor(self) -> Dict[str, float]:
-        """
-        DHT22 센서에서 온도와 습도 읽기
-        
-        Returns:
-            Dict[str, float]: {'temperature': 온도값, 'humidity': 습도값}
-        """
-        results = {}
-        
-        if not DHT_AVAILABLE:
-            # 시뮬레이션 모드
-            import random
-            results["temperature"] = round(random.uniform(20.0, 30.0), 1)
-            results["humidity"] = round(random.uniform(40.0, 80.0), 1)
-            custom_logger.debug("DHT22 simulation mode - using random values")
-            return results
-        
-        try:
-            # DHT22 센서 읽기 (최대 3번 시도)
-            for attempt in range(3):
-                humidity, temperature = Adafruit_DHT.read_retry(
-                    self.DHT_SENSOR, 
-                    self.DHT_PIN
-                )
-                
-                if humidity is not None and temperature is not None:
-                    results["temperature"] = round(temperature, 1)
-                    results["humidity"] = round(humidity, 1)
-                    custom_logger.debug(f"DHT22 읽기 성공: 온도={temperature:.1f}°C, 습도={humidity:.1f}%")
-                    break
-                else:
-                    custom_logger.warning(f"DHT22 읽기 실패 (시도 {attempt + 1}/3)")
-                    time.sleep(2)  # 2초 대기 후 재시도
-            else:
-                custom_logger.error("DHT22 센서 읽기 실패 - 모든 시도 실패")
-                # 실패 시 기본값 반환
-                results["temperature"] = 25.0
-                results["humidity"] = 50.0
-                
-        except Exception as e:
-            custom_logger.error(f"DHT22 센서 읽기 중 오류: {e}")
-            # 오류 시 기본값 반환
-            results["temperature"] = 25.0
-            results["humidity"] = 50.0
-            
-        return results
-
-    def _read_co2_sensor(self) -> Dict[str, float]:
-        """
-        MH-Z19E CO2 센서에서 CO2 농도 읽기
-
-        Returns:
-            Dict[str, float]: {'co2': CO2값}
-        """
-        results = {}
-
-        if not CO2_AVAILABLE:
-            # 시뮬레이션 모드
-            import random
-            results["co2"] = round(random.uniform(400.0, 1000.0), 1)
-            custom_logger.debug("CO2 simulation mode - using random values")
-            return results
-
-        try:
-            # MH-Z19E 센서 읽기 - mh_z19.read_all()는 dict를 반환함
-            # read_all()은 {'co2': value, 'temperature': value, ...} 형태를 반환
-            if self.CO2_SENSOR_PORT:
-                co2_data = mh_z19.read_all(serial_dev=self.CO2_SENSOR_PORT)
-            else:
-                # 포트가 None이면 라이브러리가 자동으로 적절한 UART 포트를 감지
-                co2_data = mh_z19.read_all()
-
-            # mh_z19.read_all()는 {'co2': value, 'temperature': value, ...} 형태의 dict를 반환
-            if co2_data and isinstance(co2_data, dict) and 'co2' in co2_data:
-                co2_value = co2_data['co2']
-
-                # 유효한 범위 확인 (0-10000 ppm)
-                if co2_value is not None and 0 <= co2_value <= 10000:
-                    results["co2"] = round(float(co2_value), 1)
-                    custom_logger.debug(f"CO2 읽기 성공: {co2_value:.1f} ppm")
-                else:
-                    custom_logger.warning(f"CO2 값이 유효하지 않은 범위: {co2_value}")
-                    results["co2"] = 0.0
-            else:
-                custom_logger.warning(f"CO2 센서 읽기 실패 또는 잘못된 응답 형식: {co2_data}")
-                results["co2"] = 0.0
-
-        except Exception as e:
-            custom_logger.error(f"CO2 센서 읽기 중 오류: {e}")
-            # 오류 시 기본값 반환
-            results["co2"] = 0.0
-
-        return results
 
     def monitor_sensors(self) -> None:
         """
@@ -353,21 +201,6 @@ class NutrientManager:
                 "name": "Water Temp (°C)",
                 "min": self.TEMP_MIN,
                 "max": self.TEMP_MAX
-            },
-            "temperature": {
-                "name": "Air Temp (°C)",
-                "min": 15.0,
-                "max": 35.0
-            },
-            "humidity": {
-                "name": "Humidity (%)",
-                "min": 30.0,
-                "max": 90.0
-            },
-            "co2": {
-                "name": "CO2 (ppm)",
-                "min": self.CO2_MIN,
-                "max": self.CO2_MAX
             },
             "waterlevel": {
                 "name": "Water Level",
@@ -429,21 +262,6 @@ class NutrientManager:
                 return "✓ 정상"
             else:
                 return "⚠ 경고"
-        elif sensor_name == "temperature":
-            if 15.0 <= value <= 35.0:
-                return "✓ 정상"
-            else:
-                return "⚠ 경고"
-        elif sensor_name == "humidity":
-            if 30.0 <= value <= 90.0:
-                return "✓ 정상"
-            else:
-                return "⚠ 경고"
-        elif sensor_name == "co2":
-            if self.CO2_MIN <= value <= self.CO2_MAX:
-                return "✓ 정상"
-            else:
-                return "⚠ 경고"
         elif sensor_name == "water_level":
             if value == self.WATER_LEVEL_HIGH:
                 return "✓ HIGH (Full)"
@@ -465,9 +283,6 @@ class NutrientManager:
             "ph": "environment/ph",
             "ec": "environment/ec",
             "water_temperature": "environment/water_temperature",
-            "temperature": "environment/temperature",
-            "humidity": "environment/humidity",
-            "co2": "environment/co2"
         }
 
         timestamp = time.time()
