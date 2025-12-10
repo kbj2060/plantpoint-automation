@@ -43,13 +43,9 @@ class IntervalAutomation(BaseAutomation):
             duration_settings = settings.get('duration', self._temp_duration_settings)
             interval_settings = settings.get('interval', self._temp_interval_settings)
 
-            self.duration = TimeConfig(
-                duration_settings if isinstance(duration_settings, dict) else {'seconds': int(duration_settings)}
-            ).to_seconds()
+            self.duration = TimeConfig(duration_settings).to_seconds()
 
-            self.base_interval = TimeConfig(
-                interval_settings if isinstance(interval_settings, dict) else {'seconds': int(interval_settings)}
-            ).to_seconds()
+            self.base_interval = TimeConfig(interval_settings).to_seconds()
 
         except Exception as e:
             self.logger.error(f"설정 초기화 실패: {str(e)}")
