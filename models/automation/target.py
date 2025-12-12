@@ -1,8 +1,10 @@
 from typing import Optional
+import threading
 from models.automation.base import BaseAutomation
 from models.Machine import BaseMachine
 from models.automation.models import MQTTMessage, MQTTPayloadData, MessageHandler, SwitchMessage, TopicType
 from utils.led_time_utils import load_led_time_range, is_led_on, calculate_effective_target
+from config import settings
 class TargetAutomation(BaseAutomation):
     def __init__(self, device_id: str, category: str, active: bool, target: float, margin: float,
                  increase_device_id: Optional[int] = None, decrease_device_id: Optional[int] = None,
@@ -198,4 +200,46 @@ class TargetAutomation(BaseAutomation):
                     self.logger.debug(f"Device {self.name}: 자동화 비활성화 상태 - 제어 건너뛰기")
 
         except Exception as e:
-            self.logger.error(f"환경 센서값 메시지 처리 실패: {str(e)}") 
+            self.logger.error(f"환경 센서값 메시지 처리 실패: {str(e)}")
+
+    def start_timer_thread(self) -> None:
+        """Timer thread 시작 - 주기적으로 control() 호출"""
+        if not self.name:
+            return
+            
+        # 기존 thread가 있으면 종료
+        self.stop_timer_thread()
+        
+        # Stop event 생성
+        self.timer_stop_event = threading.Event()
+        
+        def timer_loop():
+            """Timer thread 루프"""
+            try:
+                while not self.timer_stop_event.is_set():
+                    if not self.active:
+                        # 비활성화 상태면 1분마다 체크
+                        self.timer_stop_event.wait(60)
+                        continue
+                    
+                    # 주기적으로 control() 호출
+                    try:
+                        self.control()
+                    except Exception as e:
+                        self.logger.error(f"Timer thread에서 control() 실행 중 오류: {str(e)}")
+                    
+                    # 설정된 interval만큼 대기
+                    if self.timer_stop_event.wait(settings.automation_interval):
+                        # Stop event가 설정되었으면 종료
+                        break
+                        
+            except Exception as e:
+                self.logger.error(f"Timer thread 오류: {str(e)}")
+        
+        self.timer_thread = threading.Thread(
+            target=timer_loop,
+            name=f"TargetTimer-{self.name}",
+            daemon=True
+        )
+        self.timer_thread.start()
+        self.logger.info(f"Target timer thread 시작: {self.name}") 

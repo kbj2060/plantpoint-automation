@@ -10,31 +10,15 @@ from config import settings
 
 class ThreadManager:
     def __init__(self):
-        self.automation_threads: List[threading.Thread] = []
         self.nutrient_threads: List[threading.Thread] = []
         self.current_monitor_threads: List[threading.Thread] = []
         self.stop_event = Event()
         self.automation_instances: Dict[str, BaseAutomation] = {}
         self.last_status_report = time.time()
 
-    def create_automation_thread(self, automation: BaseAutomation) -> threading.Thread:
-        """자동화 스레드 생성"""
-        # 자동화 인스턴스 저장
+    def register_automation(self, automation: BaseAutomation) -> None:
+        """자동화 인스턴스 등록 (모든 automation은 자체 timer thread 사용)"""
         self.automation_instances[automation.name] = automation
-
-        def run_automation():
-            try:
-                while not self.stop_event.is_set():
-                    automation.control()
-                    self.stop_event.wait(settings.automation_interval)
-            except Exception as e:
-                custom_logger.error(f"자동화 스레드 오류 발생: {str(e)}")
-
-        return threading.Thread(
-            target=run_automation,
-            name=f"Automation-{automation.name}",
-            daemon=True
-        )
 
     def create_nutrient_thread(self, nutrient_manager) -> threading.Thread:
         """영양소 스레드 생성"""
@@ -70,15 +54,6 @@ class ThreadManager:
 
     def monitor_threads(self):
         """스레드 상태 모니터링 및 상태 리포트"""
-        # 죽은 스레드 확인
-        active_threads = [t for t in self.automation_threads if t.is_alive()]
-        terminated = len(self.automation_threads) - len(active_threads)
-
-        if terminated > 0:
-            custom_logger.warning(f"{terminated}개의 자동화 스레드가 종료됨")
-
-        self.automation_threads = active_threads
-
         # 1분마다 상태 리포트 출력
         current_time = time.time()
         if current_time - self.last_status_report >= 60:  # 1분 = 60초
@@ -87,10 +62,7 @@ class ThreadManager:
 
     def _print_status_report(self):
         """자동화 상태 리포트 출력"""
-        custom_logger.debug(f"_print_status_report 호출됨. automation_instances 개수: {len(self.automation_instances)}")
-
         if not self.automation_instances:
-            custom_logger.warning("automation_instances가 비어있어 상태 리포트를 출력하지 않습니다.")
             return
 
         current_time = datetime.now().strftime("%H:%M:%S")
@@ -99,8 +71,6 @@ class ThreadManager:
         for name, automation in self.automation_instances.items():
             status = "ON" if automation.status else "OFF"
             active_status = "✓" if automation.active else "✗"
-
-            # 남은 시간 계산
             next_change_time = self._get_next_change_time(automation)
 
             status_data.append([
@@ -124,33 +94,16 @@ class ThreadManager:
     def _get_next_change_time(self, automation) -> str:
         """다음 상태 변경까지 남은 시간 계산"""
         try:
-            # interval 타입 - 타이머 확인
-            if automation.category == "interval" and hasattr(automation, 'state') and automation.state:
-                if hasattr(automation.state, 'timers'):
-                    now = datetime.now()
-
-                    # 현재 상태에 따라 다음 타이머 확인
-                    # ON 상태면 OFF 타이머, OFF 상태면 ON 타이머
-                    is_on = bool(automation.status)
-                    scheduled_time = automation.state.timers.get_scheduled_time(is_on=not is_on)
-
-                    if scheduled_time and scheduled_time > now:
-                        remaining_seconds = (scheduled_time - now).total_seconds()
-                        if remaining_seconds >= 60:
-                            return f"{int(remaining_seconds / 60)}분"
-                        else:
-                            return f"{int(remaining_seconds)}초"
-
-            # range 타입 - 시작/종료 타이머 확인
-            elif automation.category == "range" and hasattr(automation, 'timers'):
-                now = datetime.now()
-
-                # 시작/종료 타이머 확인
-                for is_on in [True, False]:
-                    scheduled_time = automation.timers.get_scheduled_time(is_on=is_on)
-                    if scheduled_time and scheduled_time > now:
-                        remaining_seconds = (scheduled_time - now).total_seconds()
-                        if remaining_seconds >= 60:
+            # interval, range 타입은 _calculate_next_control_time() 메서드 사용
+            if automation.category in ["interval", "range"]:
+                if hasattr(automation, '_calculate_next_control_time'):
+                    next_time = automation._calculate_next_control_time()
+                    if next_time:
+                        now = datetime.now()
+                        remaining_seconds = (next_time - now).total_seconds()
+                        if remaining_seconds < 0:
+                            return "즉시"
+                        elif remaining_seconds >= 60:
                             return f"{int(remaining_seconds / 60)}분"
                         else:
                             return f"{int(remaining_seconds)}초"
@@ -166,15 +119,13 @@ class ThreadManager:
 
     def stop_automation_threads(self):
         """자동화 스레드만 종료"""
-        self.stop_event.set()
-        for thread in self.automation_threads:
-            if thread.is_alive():
-                thread.join()
-        self.automation_threads.clear()
+        # 모든 automation의 timer thread 종료
+        for automation in self.automation_instances.values():
+            if hasattr(automation, 'stop_timer_thread'):
+                automation.stop_timer_thread()
 
     def stop_nutrient_threads(self):
         """영양소 스레드만 종료"""
-        self.stop_event.set()
         for thread in self.nutrient_threads:
             if thread.is_alive():
                 thread.join()
@@ -182,7 +133,6 @@ class ThreadManager:
 
     def stop_current_monitor_threads(self):
         """전류 모니터 스레드만 종료"""
-        self.stop_event.set()
         for thread in self.current_monitor_threads:
             if thread.is_alive():
                 thread.join()

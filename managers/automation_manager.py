@@ -32,8 +32,8 @@ class AutomationManager:
         custom_logger.info("\n" + tabulate(store_data, headers=["Type", "Count"], tablefmt="grid"))
 
     def _start_automation_threads(self):
-        """자동화 스레드 시작"""
-        custom_logger.info("\n=== 자동화 스레드 초기화 중 ===")
+        """자동화 인스턴스 생성 및 등록 (각 automation은 자체 timer thread 사용)"""
+        custom_logger.info("\n=== 자동화 초기화 중 ===")
 
         automation_table = []
 
@@ -55,9 +55,8 @@ class AutomationManager:
                 if hasattr(automation, '_load_control_devices'):
                     automation._load_control_devices(self.store)
 
-                thread = self.thread_manager.create_automation_thread(automation)
-                thread.start()
-                self.thread_manager.automation_threads.append(thread)
+                # 자동화 인스턴스 등록 (자체 timer thread는 set_machine()에서 자동 시작)
+                self.thread_manager.register_automation(automation)
 
                 # 테이블 데이터 추가
                 automation_table.append([
@@ -68,7 +67,7 @@ class AutomationManager:
                 ])
 
             except Exception as e:
-                custom_logger.error(f"자동화 스레드 생성 중 오류 발생: {str(e)}")
+                custom_logger.error(f"자동화 초기화 중 오류 발생: {str(e)}")
 
         if automation_table:
             custom_logger.info("\n" + tabulate(
@@ -77,16 +76,16 @@ class AutomationManager:
                 tablefmt="grid"
             ))
 
-        custom_logger.info(f"\n✓ 생성된 자동화 스레드 수: {len(self.thread_manager.automation_threads)}")
+        custom_logger.info(f"\n✓ 등록된 자동화 수: {len(self.thread_manager.automation_instances)}")
 
 
     def run(self):
         """메인 루프 실행"""
-        if not self.thread_manager.automation_threads:
-            custom_logger.warning("실행 중인 자동화 스레드가 없습니다.")
+        if not self.thread_manager.automation_instances:
+            custom_logger.warning("등록된 자동화가 없습니다.")
             return
 
-        custom_logger.info(f"\n✓ 자동화 스레드 {len(self.thread_manager.automation_threads)}개 시작 완료\n")
+        custom_logger.info(f"\n✓ 자동화 {len(self.thread_manager.automation_instances)}개 시작 완료\n")
 
         try:
             while not self.thread_manager.stop_event.is_set():

@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Dict
+import threading
+from threading import Event
 from logger.custom_logger import CustomLogger
 from models.Machine import BaseMachine
 from resources import mqtt
@@ -26,6 +28,9 @@ class BaseAutomation(ABC):
         self.sensor_name: Optional[str] = None
         # 임시 로거 생성 (초기화 단계용)
         self.logger = CustomLogger()
+        # Timer thread 관련
+        self.timer_thread: Optional[threading.Thread] = None
+        self.timer_stop_event: Optional[Event] = None
                 
         # 기본 메시지 핸들러 등록
         self.message_handlers: Dict[TopicType, MessageHandler] = {
@@ -60,6 +65,9 @@ class BaseAutomation(ABC):
         
         # 설정 초기화 (로거 설정 후)
         self._init_from_settings(self._settings)
+        
+        # Timer thread 시작 (서브클래스에서 구현)
+        self.start_timer_thread()
         
     def _setup_mqtt_subscription(self) -> None:
         """MQTT 토픽 구독 설정"""
@@ -131,12 +139,16 @@ class BaseAutomation(ABC):
                 new_settings = self.filter_settings_dict(payload_data.data.value)
 
                 if new_settings:
+                    # Timer thread 재시작
+                    self.stop_timer_thread()
                     # update_settings 메서드가 있으면 사용 (타이머 재시작 포함)
                     if hasattr(self, 'update_settings'):
                         self.update_settings(new_settings)
                     else:
                         self._init_from_settings(new_settings)
                         self.control()
+                    # Timer thread 재시작
+                    self.start_timer_thread()
 
                 self.logger.info(
                     f"Device {self.name}: 자동화 설정 업데이트 "
@@ -211,6 +223,17 @@ class BaseAutomation(ABC):
     def _init_from_settings(self, settings: dict) -> None:
         """각 자동화 타입별 설정 초기화"""
         pass
+
+    def start_timer_thread(self) -> None:
+        """Timer thread 시작 (서브클래스에서 오버라이드)"""
+        pass
+
+    def stop_timer_thread(self) -> None:
+        """Timer thread 종료"""
+        if self.timer_stop_event:
+            self.timer_stop_event.set()
+        if self.timer_thread and self.timer_thread.is_alive():
+            self.timer_thread.join(timeout=2.0)
 
     @abstractmethod
     def control(self) -> Optional[BaseMachine]:

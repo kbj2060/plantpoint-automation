@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict
+import threading
+import time
 from models.automation.base import BaseAutomation
 from models.Machine import BaseMachine
 from resources import redis
@@ -67,7 +69,7 @@ class IntervalAutomation(BaseAutomation):
         """설정 업데이트"""
         self._init_from_settings(settings)
         self.state.reset()
-        self.control()
+        # Timer thread가 자동으로 제어하므로 여기서는 control() 호출하지 않음
 
     def control(self) -> Optional[BaseMachine]:
         """주기적 제어 실행"""
@@ -143,6 +145,138 @@ class IntervalAutomation(BaseAutomation):
             self.state.update_toggle_time(current_time)
             return None
 
+    def _calculate_next_control_time(self) -> Optional[datetime]:
+        """다음 제어 시간 계산"""
+        try:
+            if not self.active or not self.name:
+                return None
+
+            now = datetime.now()
+            
+            # 첫 실행인 경우 처리
+            if self.state.last_toggle_time is None:
+                # 첫 실행은 즉시 처리
+                return now
+            
+            elapsed_seconds = (now - self.state.last_toggle_time).total_seconds()
+            current_status = bool(self.status)
+            
+            # 현재 ON 상태일 때
+            if current_status:
+                # duration 경과 시 OFF
+                remaining_seconds = self.duration - elapsed_seconds
+                if remaining_seconds <= 0:
+                    return now  # 즉시 제어
+                return now + timedelta(seconds=remaining_seconds)
+            # 현재 OFF 상태일 때
+            else:
+                # interval 경과 시 ON
+                effective_interval = self._calculate_effective_interval()
+                remaining_seconds = effective_interval - elapsed_seconds
+                if remaining_seconds <= 0:
+                    return now  # 즉시 제어
+                return now + timedelta(seconds=remaining_seconds)
+                
+        except Exception as e:
+            self.logger.error(f"다음 제어 시간 계산 실패: {str(e)}")
+            return None
+
+    def start_timer_thread(self) -> None:
+        """Timer thread 시작"""
+        if not self.name:
+            return
+            
+        # 기존 thread가 있으면 종료
+        self.stop_timer_thread()
+        
+        # Stop event 생성
+        self.timer_stop_event = threading.Event()
+        
+        def timer_loop():
+            """Timer thread 루프"""
+            try:
+                # 첫 실행 처리
+                if self.state.last_toggle_time is None:
+                    self._handle_first_run(datetime.now())
+                
+                while not self.timer_stop_event.is_set():
+                    if not self.active:
+                        # 비활성화 상태면 1분마다 체크
+                        self.timer_stop_event.wait(60)
+                        continue
+                    
+                    # 다음 제어 시간 계산
+                    next_time = self._calculate_next_control_time()
+                    if not next_time:
+                        self.timer_stop_event.wait(60)
+                        continue
+                    
+                    now = datetime.now()
+                    wait_seconds = (next_time - now).total_seconds()
+                    
+                    if wait_seconds <= 0:
+                        # 이미 시간이 지났으면 즉시 제어
+                        self._execute_control()
+                        continue
+                    
+                    # 최대 1초 단위로 체크 (정확도 향상)
+                    check_interval = min(wait_seconds, 1.0)
+                    
+                    # 다음 제어 시간까지 대기
+                    if self.timer_stop_event.wait(check_interval):
+                        # Stop event가 설정되었으면 종료
+                        break
+                    
+                    # 제어 시간이 되었는지 확인
+                    now = datetime.now()
+                    if now >= next_time:
+                        self._execute_control()
+                        
+            except Exception as e:
+                self.logger.error(f"Timer thread 오류: {str(e)}")
+        
+        self.timer_thread = threading.Thread(
+            target=timer_loop,
+            name=f"IntervalTimer-{self.name}",
+            daemon=True
+        )
+        self.timer_thread.start()
+        self.logger.info(f"Interval timer thread 시작: {self.name}")
+
+    def _execute_control(self) -> None:
+        """제어 실행 (timer thread에서 호출)"""
+        try:
+            now = datetime.now()
+            
+            if self.state.last_toggle_time is None:
+                self._handle_first_run(now)
+                return
+            
+            elapsed_seconds = (now - self.state.last_toggle_time).total_seconds()
+            current_status = bool(self.status)
+            
+            # 현재 ON 상태일 때
+            if current_status:
+                if elapsed_seconds >= self.duration:
+                    self.logger.info(f"Device {self.name}: duration({self.duration}초) 경과로 OFF")
+                    self.update_device_status(False)
+                    self.state.update_toggle_time(now)
+            # 현재 OFF 상태일 때
+            else:
+                effective_interval = self._calculate_effective_interval()
+                if elapsed_seconds >= effective_interval:
+                    led_status = is_led_on(self.led_time_range) if self.led_time_range else None
+                    log_msg = f"Device {self.name}: interval({effective_interval}초) 경과로 ON"
+                    if self.name == 'waterspray' and led_status is not None:
+                        log_msg += f" (LED: {'ON' if led_status else 'OFF'})"
+                    self.logger.info(log_msg)
+                    
+                    self.update_device_status(True)
+                    self.state.update_toggle_time(now)
+                    
+        except Exception as e:
+            self.logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
+
     def __del__(self):
         """객체 소멸 시 정리"""
-        pass
+        self.stop_timer_thread()
