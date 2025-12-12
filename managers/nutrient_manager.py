@@ -21,7 +21,6 @@ except ImportError:
     custom_logger.warning("AtlasI2C module not available. Sensor readings will be simulated.")
     ATLAS_AVAILABLE = False
 
-ATLAS_AVAILABLE = False
 class NutrientManager:
     """
     Nutrient management system for monitoring pH, EC, and water temperature.
