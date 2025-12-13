@@ -3,6 +3,7 @@ from typing import Optional
 import threading
 from models.Machine import BaseMachine
 from models.automation.base import BaseAutomation
+from models.automation.models import MQTTMessage
 
 class RangeAutomation(BaseAutomation):
     def __init__(self, device_id: int, category: str, active: bool, start_time: str, end_time: str, updated_at: str):
@@ -83,6 +84,12 @@ class RangeAutomation(BaseAutomation):
         except Exception as e:
             self.logger.error(f"설정 초기화 실패: {str(e)}")
             raise
+
+    def _handle_switch_message(self, mqtt_message: MQTTMessage) -> None:
+        """스위치 상태 메시지 처리 (Range 전용 - 스케줄 확인)"""
+        super()._handle_switch_message(mqtt_message)
+        # 수동 제어 후 스케줄 상태 확인 (즉시 스케줄 적용)
+        self.control()
 
     def control(self) -> Optional[BaseMachine]:
         """Range 제어 실행"""

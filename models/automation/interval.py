@@ -6,6 +6,7 @@ from models.automation.base import BaseAutomation
 from models.Machine import BaseMachine
 from resources import redis
 from utils.led_time_utils import load_led_time_range, is_led_on
+from models.automation.models import MQTTMessage
 
 class IntervalState:
     def __init__(self):
@@ -109,6 +110,16 @@ class IntervalAutomation(BaseAutomation):
         except Exception as e:
             self.logger.error(f"Device {self.name} 제어 중 오류 발생: {str(e)}")
             return None
+
+    def _handle_switch_message(self, mqtt_message: MQTTMessage) -> None:
+        """스위치 상태 메시지 처리 (Interval 전용 - 수동 제어 시 타이머 리셋)"""
+        old_status = self.status
+        super()._handle_switch_message(mqtt_message)
+        
+        # 상태가 외부(MQTT)에 의해 변경되었다면 타이머 기준 시간을 현재로 리셋
+        if self.status != old_status:
+            self.state.update_toggle_time(datetime.now())
+            self.logger.info(f"Device {self.name}: 수동 제어 감지됨. Interval 타이머를 리셋합니다.")
 
     def _handle_first_run(self, current_time: datetime) -> Optional[BaseMachine]:
         """첫 실행 처리 - Redis의 마지막 상태와 경과 시간 기준"""
