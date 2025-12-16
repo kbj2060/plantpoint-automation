@@ -44,9 +44,17 @@ def main():
         try:
             device.set_i2c_address(address)
             response = device.query("I")
-            moduletype = response.split(",")[1]
-            name = device.query("name,?").split(",")[1]
+            # Response format example: "?I,RTD,1.0"
+            parts = response.split(",")
+            moduletype = parts[1] if len(parts) > 1 else "UNKNOWN"
             
+            # Try to get name, but fallback if fails
+            try:
+                name_response = device.query("name,?")
+                name = name_response.split(",")[1]
+            except:
+                name = moduletype
+
             atlas_device = AtlasI2C(address=address, moduletype=moduletype, name=name)
             atlas_devices.append(atlas_device)
             print(f"Initialized {moduletype} (Address: {address})")
@@ -72,15 +80,6 @@ def main():
             time.sleep(AtlasI2C.LONG_TIMEOUT)
             response = dev.read()
             print(f"  Result: {response}")
-
-            # Parse
-            if response.startswith("Success"):
-                value_str = response.split(':')[-1].strip().split('\x00')[0]
-                try:
-                    value = float(value_str)
-                    print(f"  Parsed Value: {value}")
-                except ValueError:
-                    print(f"  Could not parse number from: {value_str}")
 
         except Exception as e:
             print(f"  Error testing sensor: {e}")
