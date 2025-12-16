@@ -76,6 +76,9 @@ def main():
             
             # Status
             print(f"  Status: {dev.query('Status')}")
+            
+            # Calibration
+            print(f"  Calibration: {dev.query('Cal,?')}")
 
             # Read
             print("  Reading value...")
@@ -83,6 +86,18 @@ def main():
             time.sleep(AtlasI2C.LONG_TIMEOUT)
             response = dev.read()
             print(f"  Result: {response}")
+            # EC Specific Debugging
+            if dev.moduletype == "EC":
+                print(f"  Enabled Parameters: {dev.query('O,?')}")
+
+            # Read multiple times
+            print("  Reading values (5 attempts)...")
+            for i in range(5):
+                dev.write("R")
+                time.sleep(AtlasI2C.LONG_TIMEOUT)
+                response = dev.read()
+                print(f"    Attempt {i+1}: {response}")
+                time.sleep(1)
 
         except Exception as e:
             print(f"  Error testing sensor: {e}")
