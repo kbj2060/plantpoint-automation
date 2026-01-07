@@ -73,9 +73,6 @@ class TargetAutomation(BaseAutomation):
 
     def control(self) -> Optional[BaseMachine]:
         """목표값 기반 제어 실행 (cooler/heater 구분)"""
-        if not super().control():
-            return None
-
         if not all([self.target is not None, self.margin is not None]):
             self.logger.error(f"Sensor {self.name}: 필수 설정이 누락되었습니다.")
             raise ValueError(f"Sensor {self.name}: 필수 설정이 누락되었습니다.")
