@@ -5,6 +5,8 @@ from models.Machine import BaseMachine
 from models.automation.models import MQTTMessage, MQTTPayloadData, MessageHandler, SwitchMessage, TopicType
 from utils.led_time_utils import load_led_time_range, is_led_on, calculate_effective_target
 from config import settings
+from resources import mqtt
+
 class TargetAutomation(BaseAutomation):
     def __init__(self, device_id: str, category: str, active: bool, target: float, margin: float,
                  increase_device_id: Optional[int] = None, decrease_device_id: Optional[int] = None,
@@ -152,15 +154,28 @@ class TargetAutomation(BaseAutomation):
             self.logger.error(f"Sensor {self.name} 제어 중 오류 발생: {str(e)}")
             raise
 
+    def send_mqtt_message(self, device, new_status):
+        switch_message = SwitchMessage(
+                name=device.name,
+                value=new_status
+            )
+        mqtt_payload = MQTTPayloadData(
+                pattern= f"switch/{device.name}",
+                data=switch_message
+            )
+        mqtt.publish_message(self.mqtt_topic, mqtt_payload.to_dict())
+
     def _turn_on_device(self, device):
         """장치 켜기"""
         if not device.status:
             device.set_status(True)
+            self.send_mqtt_message(device, True)
 
     def _turn_off_device(self, device):
         """장치 끄기"""
         if device.status:
             device.set_status(False) 
+            self.send_mqtt_message(device, False)
 
     def _handle_environment_message(self, mqtt_message: MQTTMessage) -> None:
         """환경 센서값 메시지 처리 (Target 자동화)"""
