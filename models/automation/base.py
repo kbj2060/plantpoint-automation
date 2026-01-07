@@ -69,6 +69,23 @@ class BaseAutomation(ABC):
         # Timer thread 시작 (서브클래스에서 구현)
         self.start_timer_thread()
         
+    def set_sensor(self, sensor: dict) -> None:
+        """센서 정보 설정"""
+        self.name = sensor.get('name')
+        self.sensor_name = self.name
+        
+        # 이름이 설정된 후에 로거 초기화
+        self.logger = self.logger.set_machine(self.name)
+        
+        # MQTT 구독 설정
+        self._setup_mqtt_subscription()
+        
+        # 설정 초기화 (로거 설정 후)
+        self._init_from_settings(self._settings)
+        
+        # Timer thread 시작 (서브클래스에서 구현)
+        self.start_timer_thread()
+
     def _setup_mqtt_subscription(self) -> None:
         """MQTT 토픽 구독 설정"""
         try:

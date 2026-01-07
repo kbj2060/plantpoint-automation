@@ -43,16 +43,27 @@ class AutomationManager:
         for automation_data in self.store.automations:
             try:
                 automation = create_automation(automation_data)
-                machine = next(
+                
+                # Machine 검색 (BaseMachine 객체는 machine_id 사용)
+                device = next(
                     (m for m in self.store.machines if m.machine_id == automation.device_id),
                     None
                 )
 
-                if not machine:
-                    custom_logger.error(f"Device ID {automation.device_id}에 해당하는 machine을 찾을 수 없습니다.")
-                    continue
+                if device:
+                    automation.set_machine(device)
+                else:
+                    # Sensor 검색 (Sensor는 딕셔너리 형태이므로 id 사용)
+                    device = next(
+                        (s for s in self.store.sensors if s.get('id') == automation.device_id),
+                        None
+                    )
+                    if device:
+                        automation.set_sensor(device)
 
-                automation.set_machine(machine)
+                if not device:
+                    custom_logger.error(f"Device ID {automation.device_id}에 해당하는 Machine 또는 Sensor를 찾을 수 없습니다.")
+                    continue
 
                 # Target 자동화인 경우 제어 장치 로드
                 if hasattr(automation, '_load_control_devices'):
@@ -62,8 +73,9 @@ class AutomationManager:
                 self.thread_manager.register_automation(automation)
 
                 # 테이블 데이터 추가
+                device_name = device.name if hasattr(device, 'name') else device.get('name')
                 automation_table.append([
-                    machine.name,
+                    device_name,
                     automation.category,
                     "Active" if automation.active else "Inactive",
                     str(automation.settings)
