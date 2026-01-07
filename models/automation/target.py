@@ -1,5 +1,6 @@
 from typing import Optional
 import threading
+import time
 from models.automation.base import BaseAutomation
 from models.Machine import BaseMachine
 from models.automation.models import MQTTMessage, MQTTPayloadData, MessageHandler, SwitchMessage, TopicType
@@ -155,16 +156,24 @@ class TargetAutomation(BaseAutomation):
             raise
 
     def send_mqtt_message(self, device, new_status):
-        topic = f"switch/{device.name}"
-        switch_message = SwitchMessage(
-                name=device.name,
-                value=new_status
-            )
-        mqtt_payload = MQTTPayloadData(
-                pattern= topic,
-                data=switch_message
-            )
-        mqtt.publish_message(topic, mqtt_payload.to_dict())
+        def send_burst():
+            topic = f"switch/{device.name}"
+            switch_message = SwitchMessage(
+                    name=device.name,
+                    value=new_status
+                )
+            mqtt_payload = MQTTPayloadData(
+                    pattern= topic,
+                    data=switch_message
+                )
+            
+            # IR 신호 유실 방지를 위해 0.5초 간격으로 3회 반복 전송
+            for _ in range(3):
+                mqtt.publish_message(topic, mqtt_payload.to_dict())
+                time.sleep(0.5)
+
+        # MQTT 스레드 차단을 방지하기 위해 별도 스레드에서 실행
+        threading.Thread(target=send_burst, daemon=True).start()
 
     def _turn_on_device(self, device):
         """장치 켜기"""
