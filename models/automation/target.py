@@ -155,15 +155,16 @@ class TargetAutomation(BaseAutomation):
             raise
 
     def send_mqtt_message(self, device, new_status):
+        topic = f"switch/{device.name}"
         switch_message = SwitchMessage(
                 name=device.name,
                 value=new_status
             )
         mqtt_payload = MQTTPayloadData(
-                pattern= f"switch/{device.name}",
+                pattern= topic,
                 data=switch_message
             )
-        mqtt.publish_message(self.mqtt_topic, mqtt_payload.to_dict())
+        mqtt.publish_message(topic, mqtt_payload.to_dict())
 
     def _turn_on_device(self, device):
         """장치 켜기"""
