@@ -155,12 +155,12 @@ class TargetAutomation(BaseAutomation):
     def _turn_on_device(self, device):
         """장치 켜기"""
         if not device.status:
-            device.update_status(True)
+            device.set_status(True)
 
     def _turn_off_device(self, device):
         """장치 끄기"""
         if device.status:
-            device.update_status(False) 
+            device.set_status(False) 
 
     def _handle_environment_message(self, mqtt_message: MQTTMessage) -> None:
         """환경 센서값 메시지 처리 (Target 자동화)"""
