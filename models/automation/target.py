@@ -16,7 +16,6 @@ class TargetAutomation(BaseAutomation):
             'decrease_device_id': decrease_device_id
         }
         super().__init__(device_id, category, active, updated_at, self.settings)
-        
         self.message_handlers = {
             TopicType.AUTOMATION: MessageHandler(
                 topic_type=TopicType.AUTOMATION,
