@@ -1,10 +1,13 @@
-from typing import Optional
 import threading
+import json
+
+from typing import Optional
 from models.automation.base import BaseAutomation
 from models.Machine import BaseMachine
 from models.automation.models import MQTTMessage, MQTTPayloadData, MessageHandler, SwitchMessage, TopicType
 from utils.led_time_utils import load_led_time_range, is_led_on, calculate_effective_target
 from config import settings
+from resources.redis import redis_client
 from resources import mqtt
 
 class TargetAutomation(BaseAutomation):
@@ -45,7 +48,7 @@ class TargetAutomation(BaseAutomation):
             self.decrease_device_id = settings.get('decrease_device_id')  # 값을 내리는 장치 (cooler)
             self.in_range_count = 0  # 초기화 시점에 0으로 설정
             self.required_count = 3  # 필요한 연속 카운트 수는 3
-            self.value = None
+            self.value = self.get_redis_environment()
             self.increase_device = None  # Store에서 찾은 increase 장치
             self.decrease_device = None  # Store에서 찾은 decrease 장치
             self.led_time_range = None  # LED 시간 범위 설정
@@ -71,17 +74,19 @@ class TargetAutomation(BaseAutomation):
         # LED의 range automation 설정 로드
         self.led_time_range = load_led_time_range(store, self.name)
 
-
     def control(self) -> Optional[BaseMachine]:
-        """목표값 기반 제어 실행 (cooler/heater 구분)"""
+        """목표값 기반 제어 실행 (cooler/heater 구분)"""        
         if not all([self.target is not None, self.margin is not None]):
             self.logger.error(f"Sensor {self.name}: 필수 설정이 누락되었습니다.")
             raise ValueError(f"Sensor {self.name}: 필수 설정이 누락되었습니다.")
 
         if self.value is None:
-            # 센서값이 없으면 제어하지 않고 종료
-            self.logger.debug(f"Sensor {self.name}: 센서값이 없어 제어하지 않습니다.")
-            return None
+            redis_value = self.get_redis_environment()
+            if redis_value:
+                self.value = redis_value
+            else:
+                self.logger.debug(f"Sensor {self.name}: 센서값이 없어 제어하지 않습니다.")
+                return None
 
         try:
             # LED 상태에 따라 동적으로 target 계산
@@ -104,6 +109,10 @@ class TargetAutomation(BaseAutomation):
                 # decrease 장치 끄기 (cooler)
                 if self.decrease_device:
                     self._turn_off_device(self.decrease_device)
+                    self.logger.info(
+                        f"Sensor {self.name}: {self.decrease_device.name} OFF "
+                        f"(현재값: {self.value}, 유효목표: {effective_target}, LED: {'ON' if led_status else 'OFF'})"
+                    )
 
                 self.in_range_count = 0
 
@@ -121,6 +130,10 @@ class TargetAutomation(BaseAutomation):
                 # increase 장치 끄기 (heater)
                 if self.increase_device:
                     self._turn_off_device(self.increase_device)
+                    self.logger.info(
+                        f"Sensor {self.name}: {self.increase_device.name} OFF "
+                        f"(현재값: {self.value}, 유효목표: {effective_target})"
+                    )
 
                 self.in_range_count = 0
 
@@ -132,7 +145,7 @@ class TargetAutomation(BaseAutomation):
                     self.logger.info(
                         f"Sensor {self.name}: 목표값 범위 내 "
                         f"(연속 카운트: {self.in_range_count}/{self.required_count}, "
-                        f"현재값: {self.value}, 유효목표: {effective_target}, LED: {'ON' if led_status else 'OFF'})"
+                        f"현재값: {self.value}, 유효목표: {effective_target})"
                     )
 
                 # 연속 카운트 도달 -> 모든 장치 끄기
@@ -148,11 +161,25 @@ class TargetAutomation(BaseAutomation):
                     )
                     self.in_range_count = 0
 
-            return None
-
         except Exception as e:
             self.logger.error(f"Sensor {self.name} 제어 중 오류 발생: {str(e)}")
             raise
+        
+    def get_redis_environment(self):
+        try:
+            key = f"environment/{self.name}"
+            return json.loads(redis_client.get(key)).get('value')
+        except:
+            self.logger.info(f"{self.name}의 Redis 값이 없습니다.")
+            return None
+
+    def get_redis_switch(self, name):
+        try:
+            key = f"switch/{self.name}"
+            return bool(redis_client.get(key))
+        except:
+            self.logger.info(f"{self.name}의 Redis 값이 없습니다.")
+            return None
 
     def send_mqtt_message(self, device, new_status):
         topic = f"switch/{device.name}"
@@ -168,6 +195,7 @@ class TargetAutomation(BaseAutomation):
 
     def _turn_on_device(self, device):
         """장치 켜기"""
+
         if not device.status:
             device.set_status(True)
             self.send_mqtt_message(device, True)
@@ -200,12 +228,11 @@ class TargetAutomation(BaseAutomation):
                 # 자동화가 활성화되어 있을 때만 제어 실행
                 if self.active:
                     try:
-                        controlled_machine = self.control()
-                        if controlled_machine:
-                            self.logger.info(
-                                f"자동화 실행 성공: {self.name} "
-                                f"(현재값: {self.value}, 상태: {self.status})"
-                            )
+                        self.control()
+                        self.logger.info(
+                            f"자동화 실행 성공: {self.name} "
+                            f"(현재값: {self.value}, 상태: {self.status})"
+                        )
                     except Exception as e:
                         self.logger.error(f"자동화 실행 중 오류 발생: {str(e)}")
                 else:

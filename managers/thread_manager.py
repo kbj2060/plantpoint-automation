@@ -57,7 +57,7 @@ class ThreadManager:
         # 1분마다 상태 리포트 출력
         current_time = time.time()
         if current_time - self.last_status_report >= 60:  # 1분 = 60초
-            self._print_status_report()
+            #self._print_status_report()
             self.last_status_report = current_time
 
     def _print_status_report(self):
