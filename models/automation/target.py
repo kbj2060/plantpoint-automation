@@ -1,7 +1,11 @@
 import threading
+<<<<<<< HEAD
 import json
 
 from typing import Optional
+=======
+import time
+>>>>>>> 55542f46a33def7ae3f438c97309686e3d39d3ff
 from models.automation.base import BaseAutomation
 from models.Machine import BaseMachine
 from models.automation.models import MQTTMessage, MQTTPayloadData, MessageHandler, SwitchMessage, TopicType
@@ -182,16 +186,24 @@ class TargetAutomation(BaseAutomation):
             return None
 
     def send_mqtt_message(self, device, new_status):
-        topic = f"switch/{device.name}"
-        switch_message = SwitchMessage(
-                name=device.name,
-                value=new_status
-            )
-        mqtt_payload = MQTTPayloadData(
-                pattern= topic,
-                data=switch_message
-            )
-        mqtt.publish_message(topic, mqtt_payload.to_dict())
+        def send_burst():
+            topic = f"switch/{device.name}"
+            switch_message = SwitchMessage(
+                    name=device.name,
+                    value=new_status
+                )
+            mqtt_payload = MQTTPayloadData(
+                    pattern= topic,
+                    data=switch_message
+                )
+            
+            # IR 신호 유실 방지를 위해 1초 간격으로 3회 반복 전송
+            for _ in range(3):
+                mqtt.publish_message(topic, mqtt_payload.to_dict())
+                time.sleep(1)
+
+        # MQTT 스레드 차단을 방지하기 위해 별도 스레드에서 실행
+        threading.Thread(target=send_burst, daemon=True).start()
 
     def _turn_on_device(self, device):
         """장치 켜기"""
@@ -228,11 +240,12 @@ class TargetAutomation(BaseAutomation):
                 # 자동화가 활성화되어 있을 때만 제어 실행
                 if self.active:
                     try:
-                        self.control()
-                        self.logger.info(
-                            f"자동화 실행 성공: {self.name} "
-                            f"(현재값: {self.value}, 상태: {self.status})"
-                        )
+                        controlled_machine = self.control()
+                        if controlled_machine:
+                            self.logger.info(
+                                f"자동화 실행 성공: {self.name} "
+                                f"(현재값: {self.value}, 증가장치 상태: {self.increase_device.status}, 감소장치 상태: {self.decrease_device.status})"
+                            )
                     except Exception as e:
                         self.logger.error(f"자동화 실행 중 오류 발생: {str(e)}")
                 else:
