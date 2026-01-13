@@ -167,10 +167,10 @@ class TargetAutomation(BaseAutomation):
                     data=switch_message
                 )
             
-            # IR 신호 유실 방지를 위해 0.5초 간격으로 3회 반복 전송
+            # IR 신호 유실 방지를 위해 1초 간격으로 3회 반복 전송
             for _ in range(3):
                 mqtt.publish_message(topic, mqtt_payload.to_dict())
-                time.sleep(0.5)
+                time.sleep(1)
 
         # MQTT 스레드 차단을 방지하기 위해 별도 스레드에서 실행
         threading.Thread(target=send_burst, daemon=True).start()
@@ -213,7 +213,7 @@ class TargetAutomation(BaseAutomation):
                         if controlled_machine:
                             self.logger.info(
                                 f"자동화 실행 성공: {self.name} "
-                                f"(현재값: {self.value}, 상태: {self.status})"
+                                f"(현재값: {self.value}, 증가장치 상태: {self.increase_device.status}, 감소장치 상태: {self.decrease_device.status})"
                             )
                     except Exception as e:
                         self.logger.error(f"자동화 실행 중 오류 발생: {str(e)}")
