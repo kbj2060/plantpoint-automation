@@ -7,6 +7,7 @@ from models.Machine import BaseMachine
 from resources import redis
 from utils.led_time_utils import load_led_time_range, is_led_on
 from models.automation.models import MQTTMessage
+from store import get_store
 
 class IntervalState:
     def __init__(self):
@@ -54,8 +55,9 @@ class IntervalAutomation(BaseAutomation):
             self.logger.error(f"설정 초기화 실패: {str(e)}")
             raise ValueError(f"설정 초기화 실패: {str(e)}")
 
-    def _load_control_devices(self, store) -> None:
+    def _load_control_devices(self) -> None:
         """Store에서 LED 시간 범위 설정 로드 (waterspray 전용)"""
+        store = get_store()
         if self.name == 'waterspray':
             self.led_time_range = load_led_time_range(store, self.name)
 

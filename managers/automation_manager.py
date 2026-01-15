@@ -67,7 +67,7 @@ class AutomationManager:
 
                 # Target 자동화인 경우 제어 장치 로드
                 if hasattr(automation, '_load_control_devices'):
-                    automation._load_control_devices(self.store)
+                    automation._load_control_devices()
 
                 # 자동화 인스턴스 등록 (자체 timer thread는 set_machine()에서 자동 시작)
                 self.thread_manager.register_automation(automation)
@@ -168,7 +168,7 @@ class AutomationManager:
             
             # Target 자동화인 경우 제어 장치 로드
             if hasattr(automation, '_load_control_devices'):
-                automation._load_control_devices(self.store)
+                automation._load_control_devices()
             
             # 자동화 인스턴스 등록
             self.thread_manager.register_automation(automation)

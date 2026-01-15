@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from models.Machine import BaseMachine
 from models.Response import (
     AutomationResponse,
@@ -12,6 +12,23 @@ from models.Response import (
 )
 from resources import http, redis
 from logger.custom_logger import custom_logger
+
+# 싱글톤 인스턴스
+_store_instance: Optional['Store'] = None
+
+
+def get_store() -> 'Store':
+    """Store 싱글톤 인스턴스 반환"""
+    global _store_instance
+    if _store_instance is None:
+        raise RuntimeError("Store가 아직 초기화되지 않았습니다. main.py에서 Store()를 먼저 생성해주세요.")
+    return _store_instance
+
+
+def set_store(store: 'Store') -> None:
+    """Store 싱글톤 인스턴스 설정"""
+    global _store_instance
+    _store_instance = store
 
 
 class Store:
@@ -38,6 +55,9 @@ class Store:
 
             # Redis에 데이터 저장
             self._save_to_redis()
+            
+            # 싱글톤 인스턴스로 등록
+            set_store(self)
 
 
         except Exception as e:

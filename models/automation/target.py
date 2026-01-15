@@ -1,11 +1,8 @@
 import threading
-<<<<<<< HEAD
 import json
 
 from typing import Optional
-=======
 import time
->>>>>>> 55542f46a33def7ae3f438c97309686e3d39d3ff
 from models.automation.base import BaseAutomation
 from models.Machine import BaseMachine
 from models.automation.models import MQTTMessage, MQTTPayloadData, MessageHandler, SwitchMessage, TopicType
@@ -13,6 +10,7 @@ from utils.led_time_utils import load_led_time_range, is_led_on, calculate_effec
 from config import settings
 from resources.redis import redis_client
 from resources import mqtt
+from store import get_store
 
 class TargetAutomation(BaseAutomation):
     def __init__(self, device_id: str, category: str, active: bool, target: float, margin: float,
@@ -42,7 +40,7 @@ class TargetAutomation(BaseAutomation):
                 description="환경 센서값 메시지 처리"
             )
         }
-        
+    
     def _init_from_settings(self, settings: dict) -> None:
         """Target 자동화 설정 초기화"""
         try:
@@ -62,7 +60,8 @@ class TargetAutomation(BaseAutomation):
             self.margin = None
             self.logger.warning("Target 자동화 설정이 비어있습니다.")
 
-    def _load_control_devices(self, store):
+    def _load_control_devices(self):
+        store = get_store()
         """Store에서 increase/decrease 장치 찾기 및 LED range automation 설정 로드"""
         if self.increase_device_id:
             self.increase_device = next(
@@ -77,6 +76,12 @@ class TargetAutomation(BaseAutomation):
 
         # LED의 range automation 설정 로드
         self.led_time_range = load_led_time_range(store, self.name)
+
+    def update_settings(self, settings: dict) -> None:
+        """Target 자동화 설정 업데이트"""
+        self._init_from_settings(settings)
+        self._load_control_devices()
+        self.control()
 
     def control(self) -> Optional[BaseMachine]:
         """목표값 기반 제어 실행 (cooler/heater 구분)"""        
@@ -186,24 +191,16 @@ class TargetAutomation(BaseAutomation):
             return None
 
     def send_mqtt_message(self, device, new_status):
-        def send_burst():
-            topic = f"switch/{device.name}"
-            switch_message = SwitchMessage(
-                    name=device.name,
-                    value=new_status
-                )
-            mqtt_payload = MQTTPayloadData(
-                    pattern= topic,
-                    data=switch_message
-                )
-            
-            # IR 신호 유실 방지를 위해 1초 간격으로 3회 반복 전송
-            for _ in range(3):
-                mqtt.publish_message(topic, mqtt_payload.to_dict())
-                time.sleep(1)
-
-        # MQTT 스레드 차단을 방지하기 위해 별도 스레드에서 실행
-        threading.Thread(target=send_burst, daemon=True).start()
+        topic = f"switch/{device.name}"
+        switch_message = SwitchMessage(
+                name=device.name,
+                value=new_status
+            )
+        mqtt_payload = MQTTPayloadData(
+                pattern= topic,
+                data=switch_message
+            )
+        mqtt.publish_message(topic, mqtt_payload.to_dict())
 
     def _turn_on_device(self, device):
         """장치 켜기"""
@@ -254,44 +251,28 @@ class TargetAutomation(BaseAutomation):
         except Exception as e:
             self.logger.error(f"환경 센서값 메시지 처리 실패: {str(e)}")
 
+    def _handle_switch_message(self, mqtt_message: MQTTMessage) -> None:
+        """스위치 상태 메시지 처리"""
+        try:
+            payload_data = MQTTPayloadData(
+                pattern=mqtt_message.topic,
+                data=SwitchMessage(
+                    name=mqtt_message.topic_parts[1],
+                    value=mqtt_message.payload['data']['value']
+                )
+            )
+
+            new_status = bool(payload_data.data.value)
+            if payload_data.data.name == self.increase_device.name and new_status != self.increase_device.status:
+                self.increase_device.status = new_status
+            elif  payload_data.data.name == self.decrease_device.name and new_status != self.decrease_device.status:
+                self.decrease_device.status = new_status
+
+        except Exception as e:
+            self.logger.error(f"스위치 상태 메시지 처리 실패: {str(e)}")
+
     def start_timer_thread(self) -> None:
-        """Timer thread 시작 - 주기적으로 control() 호출"""
-        if not self.name:
-            return
-            
-        # 기존 thread가 있으면 종료
-        self.stop_timer_thread()
-        
-        # Stop event 생성
-        self.timer_stop_event = threading.Event()
-        
-        def timer_loop():
-            """Timer thread 루프"""
-            try:
-                while not self.timer_stop_event.is_set():
-                    if not self.active:
-                        # 비활성화 상태면 1분마다 체크
-                        self.timer_stop_event.wait(60)
-                        continue
-                    
-                    # 주기적으로 control() 호출
-                    try:
-                        self.control()
-                    except Exception as e:
-                        self.logger.error(f"Timer thread에서 control() 실행 중 오류: {str(e)}")
-                    
-                    # 설정된 interval만큼 대기
-                    if self.timer_stop_event.wait(settings.automation_interval):
-                        # Stop event가 설정되었으면 종료
-                        break
-                        
-            except Exception as e:
-                self.logger.error(f"Timer thread 오류: {str(e)}")
-        
-        self.timer_thread = threading.Thread(
-            target=timer_loop,
-            name=f"TargetTimer-{self.name}",
-            daemon=True
-        )
-        self.timer_thread.start()
-        self.logger.info(f"Target timer thread 시작: {self.name}") 
+        """Timer thread 시작 - Target 자동화는 MQTT 메시지 기반으로 동작하므로 타이머 스레드 불필요"""
+        # Target 자동화는 _handle_environment_message에서 MQTT 메시지를 받을 때마다 control()을 호출하므로
+        # 별도의 타이머 스레드가 필요하지 않습니다.
+        pass 
