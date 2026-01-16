@@ -68,11 +68,22 @@ class TargetAutomation(BaseAutomation):
                 (m for m in store.machines if m.machine_id == self.increase_device_id),
                 None
             )
+            # increase_device의 스위치 토픽 구독
+            if self.increase_device and self.increase_device.name:
+                increase_switch_topic = f"switch/{self.increase_device.name}"
+                mqtt.client.message_callback_add(increase_switch_topic, self._on_mqtt_message)
+                self.logger.info(f"MQTT 구독 추가: {increase_switch_topic}")
+        
         if self.decrease_device_id:
             self.decrease_device = next(
                 (m for m in store.machines if m.machine_id == self.decrease_device_id),
                 None
             )
+            # decrease_device의 스위치 토픽 구독
+            if self.decrease_device and self.decrease_device.name:
+                decrease_switch_topic = f"switch/{self.decrease_device.name}"
+                mqtt.client.message_callback_add(decrease_switch_topic, self._on_mqtt_message)
+                self.logger.info(f"MQTT 구독 추가: {decrease_switch_topic}")
 
         # LED의 range automation 설정 로드
         self.led_time_range = load_led_time_range(store, self.name)
@@ -263,10 +274,25 @@ class TargetAutomation(BaseAutomation):
             )
 
             new_status = bool(payload_data.data.value)
-            if payload_data.data.name == self.increase_device.name and new_status != self.increase_device.status:
-                self.increase_device.status = new_status
-            elif  payload_data.data.name == self.decrease_device.name and new_status != self.decrease_device.status:
-                self.decrease_device.status = new_status
+            device_name = payload_data.data.name
+            
+            # increase_device의 스위치 메시지 처리
+            if self.increase_device and device_name == self.increase_device.name:
+                if new_status != self.increase_device.status:
+                    self.increase_device.status = new_status
+                    self.logger.info(
+                        f"Device {self.name}: {self.increase_device.name} 상태 업데이트 "
+                        f"(상태: {new_status})"
+                    )
+            
+            # decrease_device의 스위치 메시지 처리
+            elif self.decrease_device and device_name == self.decrease_device.name:
+                if new_status != self.decrease_device.status:
+                    self.decrease_device.status = new_status
+                    self.logger.info(
+                        f"Device {self.name}: {self.decrease_device.name} 상태 업데이트 "
+                        f"(상태: {new_status})"
+                    )
 
         except Exception as e:
             self.logger.error(f"스위치 상태 메시지 처리 실패: {str(e)}")
