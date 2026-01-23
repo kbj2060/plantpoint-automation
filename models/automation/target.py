@@ -237,6 +237,15 @@ class TargetAutomation(BaseAutomation):
                 )
             )
 
+            # 디버깅: 모든 환경 메시지 로그 (이름 불일치 시에도)
+            received_name = payload_data.data.name
+            if received_name != self.name:
+                self.logger.debug(
+                    f"Device {self.name}: 환경 메시지 수신했으나 이름 불일치 "
+                    f"(수신된 이름: {received_name}, 자동화 이름: {self.name}, 토픽: {mqtt_message.topic})"
+                )
+                return
+
             if payload_data.data.name == self.name:
                 self.value = float(payload_data.data.value)
 
@@ -250,9 +259,11 @@ class TargetAutomation(BaseAutomation):
                     try:
                         controlled_machine = self.control()
                         if controlled_machine:
+                            increase_status = self.increase_device.status if self.increase_device else None
+                            decrease_status = self.decrease_device.status if self.decrease_device else None
                             self.logger.info(
                                 f"자동화 실행 성공: {self.name} "
-                                f"(현재값: {self.value}, 증가장치 상태: {self.increase_device.status}, 감소장치 상태: {self.decrease_device.status})"
+                                f"(현재값: {self.value}, 증가장치 상태: {increase_status}, 감소장치 상태: {decrease_status})"
                             )
                     except Exception as e:
                         self.logger.error(f"자동화 실행 중 오류 발생: {str(e)}")
