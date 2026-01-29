@@ -175,6 +175,29 @@ class BaseAutomation(ABC):
         except Exception as e:
             self.logger.error(f"자동화 설정 메시지 처리 실패: {str(e)}")
 
+    def apply_settings_from_dict(self, value: dict) -> None:
+        """
+        API/DB에서 가져온 설정 딕셔너리를 적용 (MQTT 없이 직접 동기화용).
+        value: { 'active': bool, ...settings } 형태
+        """
+        try:
+            self.active = bool(value.get('active', False))
+            new_settings = self.filter_settings_dict(value)
+            if new_settings:
+                self.stop_timer_thread()
+                if hasattr(self, 'update_settings'):
+                    self.update_settings(new_settings)
+                else:
+                    self._init_from_settings(new_settings)
+                    self.control()
+                self.start_timer_thread()
+            self.logger.info(
+                f"Device {self.name}: DB 동기화로 설정 적용 "
+                f"(활성화: {self.active}, 설정: {new_settings})"
+            )
+        except Exception as e:
+            self.logger.error(f"DB 설정 적용 실패: {str(e)}")
+
     def _handle_switch_message(self, mqtt_message: MQTTMessage) -> None:
         """스위치 상태 메시지 처리 및 GPIO 제어"""
         try:

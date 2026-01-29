@@ -1,6 +1,8 @@
+import threading
 from typing import Optional
 from logger.custom_logger import custom_logger
 from managers.automation_manager import AutomationManager
+from managers.automation_sync_manager import AutomationSyncManager
 from managers.nutrient_manager import NutrientManager
 from managers.current_monitor_manager import CurrentMonitorManager
 from managers.thread_manager import ThreadManager
@@ -42,6 +44,16 @@ def main() -> None:
         current_monitor_thread.start()
         custom_logger.info("전류 모니터 스레드 시작 완료")
 
+        # Automation DB 동기화 스레드 시작 (매 5분마다 DB 설정과 비교 후 동기화)
+        automation_sync_manager = AutomationSyncManager(thread_manager)
+        automation_sync_thread = threading.Thread(
+            target=automation_sync_manager.run,
+            name="AutomationSync",
+            daemon=True
+        )
+        automation_sync_thread.start()
+        custom_logger.info("Automation DB 동기화 스레드 시작 완료")
+
         # 자동화 실행
         automation_manager.run()
     except KeyboardInterrupt:
@@ -52,6 +64,8 @@ def main() -> None:
         # 종료 처리
         if 'automation_manager' in locals():
             automation_manager.stop()
+        if 'automation_sync_manager' in locals():
+            automation_sync_manager.stop()
         if 'nutrient_manager' in locals():
             nutrient_manager.stop()
         if 'current_monitor_manager' in locals():

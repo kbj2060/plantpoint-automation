@@ -87,6 +87,7 @@ class Settings:
         self.automation_interval: int = self._get_positive_int("AUTOMATION_INTERVAL", 60)  # 자동화 실행 주기 (초)
         self.sensor_read_interval: int = self._get_positive_int("SENSOR_READ_INTERVAL", 300)  # 센서값 읽기 주기 (초)
         self.current_monitor_interval: int = self._get_positive_int("CURRENT_MONITOR_INTERVAL", 10)  # 전류 모니터 주기 (초)
+        self.automation_sync_interval: int = self._get_positive_int("AUTOMATION_SYNC_INTERVAL", 300)  # DB와 automation 설정 동기화 주기 (초, 기본 5분)
 
         # Sensor Measurement Ranges (Safety Limits)
         self.ph_min: float = self._get_float("PH_MIN", 5.5)
